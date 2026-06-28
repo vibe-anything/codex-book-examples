@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>부동산 실거래가 조회</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="검색 조건">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">₩</div>
+          <div>
+            <h1>실거래가 조회</h1>
+            <p>아파트 매매 거래를 빠르게 비교합니다.</p>
+          </div>
+        </div>
+
+        <form class="search-panel" id="searchForm">
+          <label>
+            지역
+            <select id="regionSelect" name="region">
+              <option value="11680">서울 강남구</option>
+              <option value="11710">서울 송파구</option>
+              <option value="41135">경기 성남시 분당구</option>
+              <option value="26440">부산 강서구</option>
+            </select>
+          </label>
+
+          <label>
+            거래 월
+            <input id="dealMonth" name="dealMonth" type="month" value="2026-05" />
+          </label>
+
+          <label>
+            단지명
+            <input id="keywordInput" name="keyword" type="search" placeholder="예: 래미안, 푸르지오" />
+          </label>
+
+          <div class="range-grid">
+            <label>
+              최소 면적
+              <input id="minArea" name="minArea" type="number" min="0" step="1" placeholder="㎡" />
+            </label>
+            <label>
+              최대 면적
+              <input id="maxArea" name="maxArea" type="number" min="0" step="1" placeholder="㎡" />
+            </label>
+          </div>
+
+          <details class="api-box">
+            <summary>공공데이터 API 사용</summary>
+            <label>
+              인증키
+              <input id="serviceKey" name="serviceKey" type="password" placeholder="서비스키 입력" autocomplete="off" />
+            </label>
+            <p>인증키가 없으면 내장 샘플 데이터로 조회합니다.</p>
+          </details>
+
+          <button class="primary-button" type="submit">
+            <span aria-hidden="true">⌕</span>
+            조회하기
+          </button>
+        </form>
+      </aside>
+
+      <main class="content">
+        <section class="toolbar" aria-label="조회 요약">
+          <div>
+            <p class="eyebrow">아파트 매매 실거래</p>
+            <h2 id="resultTitle">서울 강남구 · 2026년 5월</h2>
+          </div>
+          <div class="source-pill" id="sourcePill">샘플 데이터</div>
+        </section>
+
+        <section class="summary-grid" aria-label="요약 지표">
+          <article>
+            <span>거래 건수</span>
+            <strong id="countMetric">0건</strong>
+          </article>
+          <article>
+            <span>평균 거래가</span>
+            <strong id="avgMetric">-</strong>
+          </article>
+          <article>
+            <span>최고 거래가</span>
+            <strong id="maxMetric">-</strong>
+          </article>
+          <article>
+            <span>평균 ㎡당가</span>
+            <strong id="unitMetric">-</strong>
+          </article>
+        </section>
+
+        <section class="workspace">
+          <div class="map-panel" aria-label="지역 거래 분포">
+            <div class="map-header">
+              <div>
+                <h3>거래 분포</h3>
+                <p id="mapCaption">단지별 거래가를 크기와 색으로 표시합니다.</p>
+              </div>
+              <button class="icon-button" id="resetButton" type="button" title="필터 초기화" aria-label="필터 초기화">↻</button>
+            </div>
+            <div class="map-canvas" id="mapCanvas"></div>
+          </div>
+
+          <div class="list-panel">
+            <div class="panel-header">
+              <h3>거래 목록</h3>
+              <select id="sortSelect" aria-label="정렬">
+                <option value="latest">최신순</option>
+                <option value="priceDesc">가격 높은순</option>
+                <option value="priceAsc">가격 낮은순</option>
+                <option value="areaDesc">면적 큰순</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>단지</th>
+                    <th>전용면적</th>
+                    <th>층</th>
+                    <th>거래일</th>
+                    <th>거래가</th>
+                  </tr>
+                </thead>
+                <tbody id="resultBody"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="emptyState" hidden>
+              <strong>조건에 맞는 거래가 없습니다.</strong>
+              <span>지역, 월, 단지명, 면적 조건을 조정해보세요.</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
