@@ -1,2 +1,6 @@
 # IDE
 .idea/
+
+# Build outputs and dependencies
+dist/
+node_modules/
