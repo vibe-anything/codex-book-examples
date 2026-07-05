@@ -5,3 +5,10 @@
 dist/
 node_modules/
 .DS_Store
+
+# Local app artifacts
+**/node_modules/
+**/.next/
+**/out/
+**/.env
+**/.codex/state/
