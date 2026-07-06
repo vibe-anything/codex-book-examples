@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchTransactions, validateQuery } from './server.js';
+import { fetchTransactions, validateQuery } from './lib/transactions.js';
 
 describe('validateQuery', () => {
   it('accepts the planned query shape', () => {
