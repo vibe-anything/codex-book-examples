@@ -6,6 +6,7 @@ const STATUS_MESSAGES = {
   SUCCESS: '조회가 완료되었습니다.',
   EMPTY: '해당 조건의 거래 내역이 없습니다.',
   API_KEY_MISSING: 'API 키가 설정되지 않았습니다. 서버의 .env 파일에 PUBLIC_DATA_API_KEY를 설정하세요.',
+  API_AUTH_ERROR: 'API 인증에 실패했습니다. PUBLIC_DATA_API_KEY 값과 활용 신청 상태를 확인하세요.',
   API_REQUEST_FAILED: 'API 호출에 실패했습니다. 잠시 후 다시 조회하세요.',
   INVALID_INPUT: '조회 조건을 다시 확인하세요.'
 };
@@ -137,7 +138,7 @@ export default function HomePage() {
               <tr key={`${item.apartmentName}-${item.dealDate}-${index}`}>
                 <td>{item.apartmentName || '-'}</td>
                 <td>{item.legalDong || '-'}</td>
-                <td>{item.dealAmount || '-'}</td>
+                <td>{formatDealAmount(item.dealAmount)}</td>
                 <td>{item.exclusiveArea || '-'}</td>
                 <td>{item.floor || '-'}</td>
                 <td>{item.dealDate || '-'}</td>
@@ -152,5 +153,24 @@ export default function HomePage() {
 }
 
 function isErrorStatus(status) {
-  return status === 'API_KEY_MISSING' || status === 'API_REQUEST_FAILED';
+  return status === 'API_KEY_MISSING' || status === 'API_AUTH_ERROR' || status === 'API_REQUEST_FAILED';
+}
+
+function formatDealAmount(amount) {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return '-';
+  }
+
+  const eok = Math.floor(amount / 10000);
+  const man = amount % 10000;
+
+  if (eok > 0 && man > 0) {
+    return `${eok}억 ${man.toLocaleString('ko-KR')}만 원`;
+  }
+
+  if (eok > 0) {
+    return `${eok}억 원`;
+  }
+
+  return `${man.toLocaleString('ko-KR')}만 원`;
 }
