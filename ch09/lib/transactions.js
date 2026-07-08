@@ -107,7 +107,8 @@ export function parseTransactionItems(xml) {
       getTagValue(itemXml, 'dealMonth'),
       getTagValue(itemXml, 'dealDay')
     ),
-    buildYear: getTagValue(itemXml, 'buildYear')
+    buildYear: getTagValue(itemXml, 'buildYear'),
+    rawFields: getTagEntries(itemXml)
   }));
 }
 
@@ -170,6 +171,14 @@ function getTagValue(xml, tagName) {
   const pattern = new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`);
   const value = xml.match(pattern)?.[1] || '';
   return decodeXml(value.trim());
+}
+
+function getTagEntries(xml) {
+  const pattern = /<([A-Za-z0-9_:-]+)>([\s\S]*?)<\/\1>/g;
+  return [...xml.matchAll(pattern)].map((match) => ({
+    key: match[1],
+    value: decodeXml(match[2].trim())
+  }));
 }
 
 function decodeXml(value) {

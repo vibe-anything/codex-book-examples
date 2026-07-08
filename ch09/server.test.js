@@ -68,7 +68,20 @@ describe('fetchTransactions', () => {
       'exclusiveArea',
       'floor',
       'dealDate',
-      'buildYear'
+      'buildYear',
+      'rawFields'
+    ]);
+    assert.deepEqual(result.items[0].rawFields, [
+      { key: 'sggCd', value: '11680' },
+      { key: 'umdNm', value: '대치동' },
+      { key: 'aptNm', value: '은마' },
+      { key: 'excluUseAr', value: '76.79' },
+      { key: 'dealYear', value: '2024' },
+      { key: 'dealMonth', value: '1' },
+      { key: 'dealDay', value: '15' },
+      { key: 'dealAmount', value: '245,000' },
+      { key: 'floor', value: '8' },
+      { key: 'buildYear', value: '1979' }
     ]);
   });
 
@@ -118,7 +131,19 @@ describe('public data API helpers', () => {
       exclusiveArea: '76.79',
       floor: '8',
       dealDate: '2024-01-15',
-      buildYear: '1979'
+      buildYear: '1979',
+      rawFields: [
+        { key: 'sggCd', value: '11680' },
+        { key: 'umdNm', value: '대치동' },
+        { key: 'aptNm', value: '은마' },
+        { key: 'excluUseAr', value: '76.79' },
+        { key: 'dealYear', value: '2024' },
+        { key: 'dealMonth', value: '1' },
+        { key: 'dealDay', value: '15' },
+        { key: 'dealAmount', value: '245,000' },
+        { key: 'floor', value: '8' },
+        { key: 'buildYear', value: '1979' }
+      ]
     });
   });
 });
