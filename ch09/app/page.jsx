@@ -141,7 +141,10 @@ export default function HomePage() {
           <dl className="field-list">
             {(selectedItem.rawFields || []).map((field, index) => (
               <div key={`${field.key}-${index}`} className="field-row">
-                <dt>{field.key}</dt>
+                <dt>
+                  <span>{field.label || field.key}</span>
+                  {field.label && field.label !== field.key ? <code>{field.key}</code> : null}
+                </dt>
                 <dd>{field.value || '-'}</dd>
               </div>
             ))}

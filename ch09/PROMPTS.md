@@ -20,3 +20,9 @@
 
 목록 아이템 클릭 시 선택한 거래 데이터를 상세 화면으로 전달하고, 상세 화면에서는 XML 원본 필드 전체를 보기 좋게 key-value 형태로 표시해줘.
 ```
+
+```
+아래 링크의 Swagger UI Model의 설명을 기준으로 필드 라벨 매핑해라
+
+https://www.data.go.kr/data/15126469/openapi.do#/API%20%EB%AA%A9%EB%A1%9D/getRTMSDataSvcAptTrade
+```
