@@ -194,7 +194,6 @@ export default function HomePage() {
               <div key={`${field.key}-${index}`} className="field-row">
                 <dt>
                   <span>{field.label || field.key}</span>
-                  {field.label && field.label !== field.key ? <code>{field.key}</code> : null}
                 </dt>
                 <dd>{field.value || '-'}</dd>
               </div>

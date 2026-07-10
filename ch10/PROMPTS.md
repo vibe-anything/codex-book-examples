@@ -44,7 +44,11 @@ https://www.data.go.kr/data/15126469/openapi.do
 ```
 
 ```
-codex 
+codex resume
+```
+
+```
+key에서 영어는 제거하자.
 ```
 
 ```

@@ -292,13 +292,6 @@ td {
   background: #f2f5f8;
 }
 
-.field-row dt code {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6e7b89;
-  white-space: normal;
-}
-
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 20px, 1120px);
