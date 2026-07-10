@@ -52,7 +52,7 @@ h2 {
 
 .search-form {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
 }
@@ -65,7 +65,8 @@ label {
   color: #354150;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 42px;
   border: 1px solid #bdc8d3;
@@ -137,6 +138,46 @@ button:disabled {
   border-color: #e3aaa7;
   background: #fff5f4;
   color: #9d2f29;
+}
+
+.state-panel {
+  display: grid;
+  gap: 8px;
+  min-height: 160px;
+  align-content: center;
+  justify-items: center;
+  padding: 32px;
+  border: 1px solid #d9e0e7;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.state-panel h2,
+.state-panel h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.state-panel p {
+  max-width: 520px;
+  color: #5d6875;
+  line-height: 1.5;
+}
+
+.error-state {
+  border-color: #e3aaa7;
+  background: #fff8f7;
+}
+
+.error-state h2 {
+  color: #9d2f29;
+}
+
+.empty-state {
+  margin-top: 14px;
+  background: #f8fafb;
 }
 
 .table-wrap {
