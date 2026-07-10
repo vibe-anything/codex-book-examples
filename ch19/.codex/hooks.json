@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .codex/hooks/protect-env-secrets-before-tool.cjs",
+            "timeout": 10,
+            "statusMessage": "인증키 노출 여부 확인 중"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .codex/hooks/verify-tests-before-stop.cjs",
+            "timeout": 30,
+            "statusMessage": "테스트 실행 기록 확인 중"
+          }
+        ]
+      }
+    ]
+  }
+}
