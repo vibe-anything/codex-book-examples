@@ -39,9 +39,10 @@ export default function HomePage() {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
+    const dealYmdMonth = formData.get('dealYmdMonth')?.trim() || '';
     const query = {
       regionCode: formData.get('regionCode')?.trim() || '',
-      dealYmd: formData.get('dealYmd')?.trim() || ''
+      dealYmd: dealYmdMonth.replace('-', '')
     };
 
     await loadPage(query, 1);
@@ -111,7 +112,7 @@ export default function HomePage() {
           </label>
           <label>
             계약년월
-            <input name="dealYmd" inputMode="numeric" pattern="[0-9]{6}" placeholder="202401" required />
+            <input name="dealYmdMonth" type="month" defaultValue="2024-01" required />
           </label>
           <button type="submit" disabled={isLoading}>
             {isLoading ? '조회 중' : '조회'}
