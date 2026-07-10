@@ -14,7 +14,10 @@ const STATUS_MESSAGES = {
 const DEFAULT_SUMMARY = {
   regionCode: '-',
   dealYmd: '-',
-  count: '-'
+  count: '-',
+  pageNo: 1,
+  numOfRows: 10,
+  totalPages: 1
 };
 
 const EMPTY_RESULT = {
@@ -30,14 +33,28 @@ export default function HomePage() {
   });
   const [result, setResult] = useState(EMPTY_RESULT);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [lastQuery, setLastQuery] = useState(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const query = {
+      regionCode: formData.get('regionCode')?.trim() || '',
+      dealYmd: formData.get('dealYmd')?.trim() || ''
+    };
+
+    await loadPage(query, 1);
+  }
+
+  async function loadPage(query, pageNo) {
     setIsLoading(true);
     setSelectedItem(null);
 
-    const formData = new FormData(event.currentTarget);
-    const params = new URLSearchParams(formData);
+    const params = new URLSearchParams({
+      ...query,
+      pageNo: String(pageNo)
+    });
 
     try {
       const response = await fetch(`/api/transactions?${params.toString()}`);
@@ -61,6 +78,7 @@ export default function HomePage() {
         message: STATUS_MESSAGES[data.status] || STATUS_MESSAGES.API_REQUEST_FAILED,
         isError: isErrorStatus(data.status)
       });
+      setLastQuery(query);
     } catch {
       setStatus({
         message: STATUS_MESSAGES.API_REQUEST_FAILED,
@@ -72,6 +90,11 @@ export default function HomePage() {
       setIsLoading(false);
     }
   }
+
+  const pageNo = result.summary?.pageNo || 1;
+  const totalPages = result.summary?.totalPages || 1;
+  const hasPageResult = Boolean(lastQuery) && !status.isError;
+  const canMovePage = hasPageResult && !selectedItem;
 
   return (
     <main className="app-shell">
@@ -89,14 +112,6 @@ export default function HomePage() {
           <label>
             계약년월
             <input name="dealYmd" inputMode="numeric" pattern="[0-9]{6}" placeholder="202401" required />
-          </label>
-          <label>
-            페이지
-            <input name="pageNo" type="number" min="1" defaultValue="1" required />
-          </label>
-          <label>
-            행 수
-            <input name="numOfRows" type="number" min="1" defaultValue="10" required />
           </label>
           <button type="submit" disabled={isLoading}>
             {isLoading ? '조회 중' : '조회'}
@@ -116,6 +131,10 @@ export default function HomePage() {
         <div>
           <span>거래 건수</span>
           <strong>{Number.isInteger(result.summary?.count) ? result.summary.count : '-'}</strong>
+        </div>
+        <div>
+          <span>현재 페이지</span>
+          <strong>{hasPageResult ? `${pageNo} / ${totalPages}` : '-'}</strong>
         </div>
       </section>
 
@@ -190,6 +209,27 @@ export default function HomePage() {
               ))}
             </tbody>
           </table>
+          <nav className="pagination" aria-label="거래 목록 페이지">
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={!canMovePage || pageNo <= 1 || isLoading}
+              onClick={() => loadPage(lastQuery, pageNo - 1)}
+            >
+              이전
+            </button>
+            <span>
+              {canMovePage ? `${pageNo} / ${totalPages}` : '-'}
+            </span>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={!canMovePage || pageNo >= totalPages || isLoading}
+              onClick={() => loadPage(lastQuery, pageNo + 1)}
+            >
+              다음
+            </button>
+          </nav>
         </section>
       )}
     </main>

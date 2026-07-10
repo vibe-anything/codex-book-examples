@@ -36,7 +36,10 @@ export async function GET(request) {
         summary: {
           regionCode: validation.value.regionCode,
           dealYmd: validation.value.dealYmd,
-          count: 0
+          count: 0,
+          pageNo: validation.value.pageNo,
+          numOfRows: validation.value.numOfRows,
+          totalPages: 1
         },
         items: []
       },

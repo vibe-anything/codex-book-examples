@@ -52,7 +52,7 @@ h2 {
 
 .search-form {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
 }
@@ -100,7 +100,7 @@ button:disabled {
 
 .summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin: 16px 0;
 }
@@ -180,6 +180,24 @@ td {
 .clickable-row:focus {
   outline: none;
   background: #f3faf8;
+}
+
+.pagination {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  min-width: 780px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e3e9ef;
+}
+
+.pagination span {
+  min-width: 84px;
+  text-align: center;
+  font-weight: 800;
+  color: #354150;
 }
 
 .detail-wrap {
