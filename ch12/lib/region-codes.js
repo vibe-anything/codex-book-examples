@@ -58,6 +58,41 @@ export function resolveRegionName(regionName) {
   };
 }
 
+export function findRegionSuggestions(regionName, limit = 8) {
+  const query = normalizeRegionName(regionName);
+  const maxResults = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 20) : 8;
+
+  if (!query) {
+    return [];
+  }
+
+  const suggestions = new Map();
+
+  for (const region of getActiveRegions()) {
+    if (!region.code.endsWith('00000')) {
+      continue;
+    }
+
+    if (!region.searchText.includes(query)) {
+      continue;
+    }
+
+    suggestions.set(region.sggCode, {
+      regionCode: region.sggCode,
+      regionName: region.name
+    });
+  }
+
+  return [...suggestions.values()]
+    .sort((a, b) => {
+      const aIndex = normalizeRegionName(a.regionName).indexOf(query);
+      const bIndex = normalizeRegionName(b.regionName).indexOf(query);
+
+      return aIndex - bIndex || a.regionName.length - b.regionName.length || a.regionName.localeCompare(b.regionName, 'ko-KR');
+    })
+    .slice(0, maxResults);
+}
+
 function getActiveRegions() {
   if (!cachedRegions) {
     cachedRegions = parseRegionCodeText(readRegionCodeFile());

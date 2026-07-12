@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import RegionAutocomplete from './components/region-autocomplete.jsx';
 
 const STATUS_MESSAGES = {
   SUCCESS: '조회가 완료되었습니다.',
@@ -123,10 +124,7 @@ export default function HomePage() {
         </div>
 
         <form className="search-form" onSubmit={handleSubmit}>
-          <label>
-            지역명
-            <input name="regionName" defaultValue="서울특별시 강남구" placeholder="예: 서울 강남구" required />
-          </label>
+          <RegionAutocomplete />
           <label>
             계약년월
             <input name="dealYmdMonth" type="month" defaultValue="2024-01" required />

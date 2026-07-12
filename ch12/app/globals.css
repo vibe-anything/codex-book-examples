@@ -76,6 +76,38 @@ select {
   background: #ffffff;
 }
 
+.region-autocomplete {
+  position: relative;
+}
+
+.region-suggestions {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% - 1px);
+  right: 0;
+  left: 0;
+  max-height: 240px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid #bdc8d3;
+  border-radius: 0 0 6px 6px;
+  background: #ffffff;
+  box-shadow: 0 8px 16px rgba(29, 39, 51, 0.14);
+}
+
+.region-suggestions li {
+  padding: 10px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.region-suggestions li:hover,
+.region-suggestions li.active {
+  background: #e8f4f1;
+}
+
 button {
   min-height: 42px;
   border: 0;
