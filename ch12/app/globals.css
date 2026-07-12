@@ -273,6 +273,10 @@ td {
   color: #354150;
 }
 
+.pagination button:disabled {
+  cursor: default;
+}
+
 .detail-wrap {
   padding: 20px;
   background: #ffffff;
