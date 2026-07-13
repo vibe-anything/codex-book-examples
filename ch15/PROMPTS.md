@@ -1,5 +1,5 @@
 ```
-mkdir -r codex-book-examples/ch15
+mkdir -p codex-book-examples/ch15
 cd codex-book-examples/ch15
 
 codex
