@@ -47,7 +47,7 @@ export function resolveRegionName(regionName) {
       ok: false,
       error: `지역명이 여러 지역과 일치합니다. 예: ${sggMatches
         .slice(0, 3)
-        .map((region) => region.name)
+        .map((region) => region.regionName)
         .join(', ')}`
     };
   }

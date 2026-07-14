@@ -202,7 +202,10 @@ describe('region code helpers', () => {
     const result = resolveRegionName('중구');
 
     assert.equal(result.ok, false);
-    assert.match(result.error, /여러 지역/);
+    assert.equal(
+      result.error,
+      '지역명이 여러 지역과 일치합니다. 예: 대구광역시 중구, 대전광역시 중구, 부산광역시 중구'
+    );
   });
 });
 
