@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const REGION_CODE_FILE = '법정동코드 전체자료.txt';
+const REGION_CODE_FILE = 'legalDongCode.txt';
 
 let cachedRegions;
 
