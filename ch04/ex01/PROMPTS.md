@@ -3,7 +3,7 @@ mkdir ~/Projects
 cd ~/Projects
 
 # 하위 디렉토리까지 전부 만든다
-mkdir -r codex-book-examples/ch04/ex01
+mkdir -p codex-book-examples/ch04/ex01
 cd codex-book-examples/ch04/ex01
 
 codex
