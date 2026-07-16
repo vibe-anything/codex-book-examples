@@ -1,0 +1,661 @@
+.page {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.lead {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.notice {
+  display: grid;
+  gap: 6px;
+  width: min(360px, 100%);
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--warning-soft);
+  color: var(--warning-foreground);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.notice strong {
+  color: var(--warning-strong);
+  font-size: 14px;
+}
+
+.notice span,
+.notice small {
+  color: var(--warning-muted);
+}
+
+.watchlistPanel {
+  margin-bottom: 16px;
+}
+
+.watchlistHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stockSearch {
+  position: relative;
+  width: min(360px, 100%);
+}
+
+.searchLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.stockSearch input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--foreground);
+  outline: none;
+}
+
+.stockSearch input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.searchResults {
+  position: absolute;
+  z-index: 10;
+  top: 48px;
+  right: 0;
+  display: grid;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 16px 32px var(--shadow-strong);
+}
+
+.searchResult {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 0;
+  border-top: 1px solid var(--line-subtle);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.searchResult:first-child {
+  border-top: 0;
+}
+
+.searchResult:hover,
+.searchResult:focus-visible {
+  background: var(--accent-soft);
+}
+
+.searchResult:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.searchResult span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.searchResult strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchResult small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.searchResult em {
+  color: var(--accent);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.watchlistCards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.watchCard {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+  min-height: 150px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.removeWatch {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--control-background);
+  color: var(--secondary-foreground);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.removeWatch:hover,
+.removeWatch:focus-visible {
+  border-color: var(--control-border-hover);
+  background: var(--control-hover);
+}
+
+.removeWatch:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.watchName {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding-right: 30px;
+}
+
+.watchName strong {
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watchName span,
+.watchPrice span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.watchPrice {
+  display: grid;
+  gap: 5px;
+}
+
+.watchPrice strong {
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.watchRate {
+  justify-self: start;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.emptyWatchlist {
+  display: grid;
+  place-items: center;
+  min-height: 124px;
+  margin: 12px 0 0;
+  padding: 20px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--panel-translucent);
+  color: var(--muted);
+  line-height: 1.55;
+  text-align: center;
+}
+
+.watchlistStatus {
+  margin: 10px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.indexGrid,
+.marketGrid,
+.stockGrid {
+  display: grid;
+  gap: 16px;
+}
+
+.indexGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.marketGrid {
+  grid-template-columns: minmax(320px, 0.72fr) minmax(420px, 1.28fr);
+  margin-top: 16px;
+}
+
+.stockGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.indexCard,
+.pulsePanel,
+.heatmapPanel,
+.stockPanel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.indexCard {
+  padding: 22px;
+}
+
+.cardHeader,
+.sectionTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardHeader h2,
+.sectionTitle h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.sectionTitle span {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.badge {
+  min-width: 72px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.positive {
+  color: var(--positive);
+}
+
+.negative {
+  color: var(--negative);
+}
+
+.neutral {
+  color: var(--neutral);
+}
+
+.badge.positive {
+  background: var(--positive-soft);
+}
+
+.badge.negative {
+  background: var(--negative-soft);
+}
+
+.indexValue {
+  margin-top: 20px;
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.indexChange {
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.indexMeta,
+.breadthCounts {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.breadthBar {
+  height: 10px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--breadth-track);
+}
+
+.breadthBar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--breadth-fill);
+}
+
+.breadthCounts {
+  margin-top: 10px;
+}
+
+.pulsePanel,
+.heatmapPanel,
+.stockPanel {
+  padding: 18px;
+}
+
+.heatGauge {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--gauge-start), var(--gauge-end));
+}
+
+.heatGauge div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.heatGauge strong {
+  font-size: 46px;
+  line-height: 1;
+}
+
+.heatGauge span {
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.heatGauge small {
+  margin: 0;
+  color: var(--gauge-foreground);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.summaryGrid div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+}
+
+.summaryGrid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.summaryGrid strong {
+  font-size: 16px;
+}
+
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 92px;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.sectorTile {
+  display: grid;
+  align-content: space-between;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.sectorTile strong {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sectorTile span {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.sectorTile small {
+  overflow: hidden;
+  color: var(--tile-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatPositiveStrong {
+  border-color: var(--positive-strong-border);
+  background: var(--positive-strong-soft);
+}
+
+.heatPositive {
+  border-color: var(--positive-border);
+  background: var(--positive-soft);
+}
+
+.heatNegativeStrong {
+  border-color: var(--negative-strong-border);
+  background: var(--negative-strong-soft);
+}
+
+.heatNegative {
+  border-color: var(--negative-border);
+  background: var(--negative-soft);
+}
+
+.heatNeutral {
+  border-color: var(--neutral-border);
+  background: var(--neutral-soft);
+}
+
+.table {
+  display: grid;
+  gap: 2px;
+  margin-top: 14px;
+}
+
+.stockRow {
+  display: grid;
+  grid-template-columns: 28px minmax(112px, 1fr) 76px 70px 86px;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.rank {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--rank-background);
+  color: var(--rank-foreground);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stockName {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.stockName strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stockName span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.price,
+.rate,
+.turnover {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.turnover {
+  color: var(--secondary-foreground);
+}
+
+@media (max-width: 1120px) {
+  .page {
+    padding: 24px;
+  }
+
+  .watchlistCards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .marketGrid,
+  .stockGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 18px;
+  }
+
+  .header {
+    display: grid;
+  }
+
+  .header h1 {
+    font-size: 28px;
+  }
+
+  .notice {
+    width: 100%;
+  }
+
+  .watchlistHeader {
+    display: grid;
+  }
+
+  .stockSearch {
+    width: 100%;
+  }
+
+  .watchlistCards {
+    grid-template-columns: 1fr;
+  }
+
+  .indexGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .indexValue {
+    font-size: 32px;
+  }
+
+  .summaryGrid,
+  .heatmap {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stockPanel {
+    overflow-x: auto;
+  }
+
+  .stockRow {
+    grid-template-columns: 28px minmax(128px, 1fr) 76px 72px 90px;
+    min-width: 500px;
+  }
+}

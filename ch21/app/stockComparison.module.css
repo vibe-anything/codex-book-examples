@@ -1,0 +1,284 @@
+.page {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.18;
+}
+
+.lead {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.homeLink {
+  display: inline-flex;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.homeLink:hover,
+.homeLink:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dataNotice {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dataNotice strong {
+  color: var(--foreground);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(420px, 1.3fr);
+  gap: 24px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.controls h2,
+.controls p {
+  margin: 0;
+}
+
+.controls h2 {
+  font-size: 19px;
+}
+
+.controls p {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.selectGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.selectGrid label {
+  display: grid;
+  gap: 7px;
+}
+
+.selectGrid span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.selectGrid select {
+  width: 100%;
+  height: 44px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.selectGrid select:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.status {
+  margin: 12px 0 0;
+  padding: 11px 14px;
+  border: 1px solid var(--warning);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--warning);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.stockCard {
+  display: grid;
+  gap: 28px;
+  min-height: 290px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.stockIdentity {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.stockIdentity > span {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stockIdentity h2 {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.25;
+}
+
+.stockIdentity small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.stockValues {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.stockValues > div {
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--background);
+}
+
+.stockValues dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.stockValues dd {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.stockValues .rate {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.rate span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rate strong {
+  font-size: inherit;
+}
+
+.positive {
+  background: var(--positive-soft);
+  color: var(--positive);
+}
+
+.negative {
+  background: var(--negative-soft);
+  color: var(--negative);
+}
+
+.neutral {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--neutral);
+}
+
+.unavailable {
+  padding: 24px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 18px;
+  }
+
+  .header,
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    display: grid;
+  }
+
+  .header h1 {
+    font-size: 28px;
+  }
+
+  .homeLink {
+    justify-self: start;
+  }
+
+  .selectGrid,
+  .cardGrid,
+  .stockValues {
+    grid-template-columns: 1fr;
+  }
+
+  .stockCard {
+    min-height: auto;
+  }
+}
