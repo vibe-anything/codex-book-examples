@@ -1,5 +1,5 @@
 ```bash
-codex --sandbox workspace-write --ask-for-approval on-request
+codex --sandbox workspace-write
 ```
 
 ```text
@@ -28,6 +28,5 @@ codex --sandbox workspace-write --ask-for-approval on-request
 ```
 
 ```text
-부동산 실거래가 자료 API를 설명하는 파일 하나를 만들어 줘.
-공공데이터포털의 최신 공식 내용만 담아 줘.
+공공데이터포털 사이트의 최신 공식 내용만 담아 줘.
 ```
