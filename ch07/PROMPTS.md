@@ -1,5 +1,5 @@
 ```bash
-codex --sandbox workspace-write
+codex --sandbox workspace-write --ask-for-approval on-request
 ```
 
 ```text
