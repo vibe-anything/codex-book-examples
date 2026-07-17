@@ -1,17 +1,14 @@
 ```bash
+cp -r ch05 ch07
+cd ch07
+```
+
+```bash
 codex --sandbox workspace-write --ask-for-approval on-request
 ```
 
 ```text
 /status
-```
-
-```text
-부동산 실거래가 자료 API를 설명하는 파일 하나를 만들어 줘.
-```
-
-```text
-/permissions
 ```
 
 ```text
@@ -27,6 +24,30 @@ codex --sandbox workspace-write --ask-for-approval on-request
 부동산 실거래가 자료 API를 설명하는 파일 하나를 만들어 줘.
 ```
 
+```
+/exit
+```
+
+```bash
+codex --sandbox workspace-write --ask-for-approval on-request
+```
+
 ```text
-공공데이터포털 사이트의 최신 공식 내용만 담아 줘.
+/status
+```
+
+```text
+부동산 실거래가 자료 API를 설명하는 파일 하나를 만들어 줘.
+```
+
+```text
+/diff
+```
+
+```text
+/permissions
+```
+
+```bash
+codex --yolo
 ```
