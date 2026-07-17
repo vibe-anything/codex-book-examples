@@ -1,5 +1,13 @@
+```bash
+codex --sandbox workspace-write --ask-for-approval on-request
+```
+
 ```text
 /status
+```
+
+```text
+부동산 실거래가 자료 API를 설명하는 파일 하나를 만들어 줘.
 ```
 
 ```text
@@ -13,6 +21,10 @@
 
 ```text
 /diff
+```
+
+```text
+부동산 실거래가 자료 API를 설명하는 파일 하나를 만들어 줘.
 ```
 
 ```text
