@@ -1,0 +1,76 @@
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  width: min(1440px, 100%);
+  margin: 0 auto -16px;
+  padding: 16px 32px 0;
+}
+
+.control {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.current {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--control-background);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.button:hover,
+.button:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.icon {
+  color: var(--accent);
+  font-size: 14px;
+  line-height: 1;
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    margin-bottom: -10px;
+    padding: 12px 18px 0;
+  }
+
+  .control {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
