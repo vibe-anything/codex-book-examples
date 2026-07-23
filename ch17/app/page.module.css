@@ -136,6 +136,11 @@
   background: #f5fbfa;
 }
 
+.searchResult:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .searchResult span {
   display: grid;
   gap: 3px;
@@ -206,6 +211,11 @@
   background: #eef3f7;
 }
 
+.removeWatch:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
 .watchName {
   display: grid;
   gap: 5px;
@@ -256,6 +266,12 @@
   color: var(--muted);
   line-height: 1.55;
   text-align: center;
+}
+
+.watchlistStatus {
+  margin: 10px 0 0;
+  color: #a33a1c;
+  font-size: 13px;
 }
 
 .indexGrid,

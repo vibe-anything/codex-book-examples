@@ -1,5 +1,6 @@
 import { fetchDataGoKrJson } from "./dataGoKr.js";
 import { exampleMarketData } from "./exampleMarketData.js";
+import { fetchLatestDailyStockPriceItems } from "./priceStore.js";
 
 const INDEX_ENDPOINT =
   "https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getStockMarketIndex";
@@ -184,7 +185,7 @@ function findIndexItem(items, { idxCsf, idxNm }) {
 }
 
 function normalizeShortCode(value) {
-  return String(value ?? "").replace(/^A/, "");
+  return String(value ?? "").replace(/^A/i, "").toUpperCase();
 }
 
 function buildListedCodeSet(listedItems) {
@@ -365,14 +366,9 @@ function validateMarketData(marketData) {
   }
 }
 
-function buildMarketData({ indexBasDt, stockBasDt, indexItems, stockItems, listedItems }) {
+function buildDashboardData({ indexBasDt, stockBasDt, indexItems, stocks, dataNotice }) {
   const latestIndexItems = indexItems.filter((item) => item.basDt === indexBasDt);
   requireItems(latestIndexItems, "Latest market index");
-
-  const listedCodes = buildListedCodeSet(listedItems);
-  const stocks = stockItems
-    .filter(isValidTargetStock)
-    .filter((stock) => listedCodes.has(normalizeShortCode(stock.srtnCd)));
   requireItems(stocks, "Stock price");
 
   const marketData = {
@@ -382,7 +378,7 @@ function buildMarketData({ indexBasDt, stockBasDt, indexItems, stockItems, liste
       stocks: formatBasDt(stockBasDt),
       listed: formatBasDt(stockBasDt),
     },
-    dataNotice: "공공데이터포털 금융위원회 지수시세정보/주식시세정보 기준, 상장종목정보로 종목 코드 검증",
+    dataNotice,
     indices: buildIndexCards(latestIndexItems, stocks),
     marketSummary: buildMarketSummary(stocks),
     sectors: buildSectors(latestIndexItems),
@@ -392,6 +388,37 @@ function buildMarketData({ indexBasDt, stockBasDt, indexItems, stockItems, liste
 
   validateMarketData(marketData);
   return marketData;
+}
+
+function buildMarketData({ indexBasDt, stockBasDt, indexItems, stockItems, listedItems }) {
+  const listedCodes = buildListedCodeSet(listedItems);
+  const stocks = stockItems
+    .filter(isValidTargetStock)
+    .filter((stock) => listedCodes.has(normalizeShortCode(stock.srtnCd)));
+
+  return buildDashboardData({
+    indexBasDt,
+    stockBasDt,
+    indexItems,
+    stocks,
+    dataNotice: "공공데이터포털 금융위원회 지수시세정보/주식시세정보 기준, 상장종목정보로 종목 코드 검증",
+  });
+}
+
+async function getDatabaseMarketData(fetchJson) {
+  const stockDiscovery = await fetchLatestDailyStockPriceItems();
+
+  if (!stockDiscovery) return null;
+
+  const { basDt: indexBasDt, items: indexItems } = await fetchLatestIndexItems(fetchJson);
+
+  return buildDashboardData({
+    indexBasDt,
+    stockBasDt: stockDiscovery.basDt,
+    indexItems,
+    stocks: stockDiscovery.items,
+    dataNotice: "Supabase daily_stock_prices 기준, 지수와 업종은 공공데이터포털 금융위원회 지수시세정보 기준",
+  });
 }
 
 async function getLiveMarketData(fetchJson) {
@@ -428,6 +455,14 @@ export function getExampleMarketData(reason = "") {
 }
 
 export async function getMarketData({ fetchJson = fetchDataGoKrJson } = {}) {
+  try {
+    const databaseMarketData = await getDatabaseMarketData(fetchJson);
+
+    if (databaseMarketData) return databaseMarketData;
+  } catch {
+    // Fall through to the live API path when Supabase is not configured or unavailable.
+  }
+
   try {
     return await getLiveMarketData(fetchJson);
   } catch (error) {

@@ -1,4 +1,6 @@
 import "./globals.css";
+import ThemeToggle from "./ThemeToggle.js";
+import { createThemeInitializerScript } from "../lib/themePreference.js";
 
 export const metadata = {
   title: "국내 시장 대시보드",
@@ -7,8 +9,17 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ko">
-      <body>{children}</body>
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script
+          id="theme-initializer"
+          dangerouslySetInnerHTML={{ __html: createThemeInitializerScript() }}
+        />
+      </head>
+      <body>
+        <ThemeToggle />
+        {children}
+      </body>
     </html>
   );
 }

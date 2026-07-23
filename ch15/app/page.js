@@ -1,12 +1,16 @@
 import styles from "./page.module.css";
-import { marketData } from "../lib/mockMarketData";
+import { getMarketData } from "../lib/marketData.js";
+import { getWatchlistCodes } from "../lib/watchlistStore.js";
+import Watchlist from "./Watchlist.js";
+
+export const dynamic = "force-dynamic";
 
 function formatRate(value) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
 }
 
-function toneClass(value) {
+function movementClass(value) {
   if (value > 0) return styles.positive;
   if (value < 0) return styles.negative;
   return styles.neutral;
@@ -22,23 +26,23 @@ function heatClass(value) {
 
 function IndexCard({ index }) {
   const totalStocks = index.advancers + index.decliners + index.unchanged;
-  const advancerRatio = Math.round((index.advancers / totalStocks) * 100);
+  const advancerRatio = totalStocks > 0 ? Math.round((index.advancers / totalStocks) * 100) : 0;
 
   return (
     <section className={styles.indexCard}>
       <div className={styles.cardHeader}>
         <h2>{index.name}</h2>
-        <span className={`${styles.badge} ${toneClass(index.changeRate)}`}>
+        <span className={`${styles.badge} ${movementClass(index.changeRate)}`}>
           {formatRate(index.changeRate)}
         </span>
       </div>
       <div className={styles.indexValue}>{index.value}</div>
-      <div className={`${styles.indexChange} ${toneClass(index.changeRate)}`}>
+      <div className={`${styles.indexChange} ${movementClass(index.changeRate)}`}>
         {index.change}
       </div>
       <div className={styles.indexMeta}>
         <span>거래대금 {index.turnover}</span>
-        <span>상승 {advancerRatio}%</span>
+        <span>종목 상승 {advancerRatio}%</span>
       </div>
       <div className={styles.breadthBar} aria-label={`${index.name} 상승 종목 비율`}>
         <span style={{ width: `${advancerRatio}%` }} />
@@ -53,31 +57,29 @@ function IndexCard({ index }) {
 }
 
 function MarketPulse({ summary }) {
-  const total = summary.totalAdvancers + summary.totalDecliners + summary.totalUnchanged;
-  const advancerRatio = Math.round((summary.totalAdvancers / total) * 100);
-  const declinerRatio = Math.round((summary.totalDecliners / total) * 100);
-
   return (
     <section className={styles.pulsePanel}>
       <div className={styles.sectionTitle}>
         <h2>시장 열기</h2>
-        <span>{summary.heatLabel}</span>
+        <span>{summary.strongGainThreshold}% 이상 상승</span>
       </div>
       <div className={styles.heatGauge}>
         <div>
-          <strong>{summary.heatScore}</strong>
-          <span>/ 100</span>
+          <strong>{summary.strongAdvancerRatio.toFixed(1)}</strong>
+          <span>%</span>
         </div>
-        <p>{summary.tone}</p>
+        <small>
+          {summary.strongAdvancers.toLocaleString("ko-KR")} / {summary.totalStocks.toLocaleString("ko-KR")} 종목
+        </small>
       </div>
       <div className={styles.summaryGrid}>
         <div>
-          <span>상승 비율</span>
-          <strong>{advancerRatio}%</strong>
+          <span>상승 종목</span>
+          <strong>{summary.advancers.toLocaleString("ko-KR")}</strong>
         </div>
         <div>
-          <span>하락 비율</span>
-          <strong>{declinerRatio}%</strong>
+          <span>하락 종목</span>
+          <strong>{summary.decliners.toLocaleString("ko-KR")}</strong>
         </div>
         <div>
           <span>전체 거래대금</span>
@@ -100,7 +102,7 @@ function SectorHeatmap({ sectors }) {
           <article className={`${styles.sectorTile} ${heatClass(sector.changeRate)}`} key={sector.name}>
             <strong>{sector.name}</strong>
             <span>{formatRate(sector.changeRate)}</span>
-            <small>거래 {sector.turnoverStrength}</small>
+            <small>{sector.sourceLabel} · 거래 {sector.turnover}</small>
           </article>
         ))}
       </div>
@@ -124,7 +126,7 @@ function StockTable({ title, description, stocks }) {
               <span>{stock.market}</span>
             </div>
             <span className={styles.price}>{stock.price}</span>
-            <span className={`${styles.rate} ${toneClass(stock.changeRate)}`}>
+            <span className={`${styles.rate} ${movementClass(stock.changeRate)}`}>
               {formatRate(stock.changeRate)}
             </span>
             <span className={styles.turnover}>{stock.turnover}</span>
@@ -135,7 +137,19 @@ function StockTable({ title, description, stocks }) {
   );
 }
 
-export default function Home() {
+async function getInitialWatchlistCodes() {
+  try {
+    return await getWatchlistCodes();
+  } catch {
+    return [];
+  }
+}
+
+export default async function Home() {
+  const [marketData, watchlistCodes] = await Promise.all([
+    getMarketData(),
+    getInitialWatchlistCodes(),
+  ]);
   const { indices, marketSummary, sectors, topStocks } = marketData;
 
   return (
@@ -147,11 +161,13 @@ export default function Home() {
           <p className={styles.lead}>지수, 업종 흐름, 주요 종목을 한 화면에서 확인합니다.</p>
         </div>
         <aside className={styles.notice}>
-          <strong>기준 {marketData.asOf}</strong>
+          <strong>{marketData.asOf}</strong>
           <span>{marketData.dataNotice}</span>
           <small>투자 판단이나 추천을 제공하지 않습니다.</small>
         </aside>
       </header>
+
+      <Watchlist stocks={marketData.stockSearchItems} initialSavedCodes={watchlistCodes} />
 
       <div className={styles.indexGrid}>
         {indices.map((index) => (

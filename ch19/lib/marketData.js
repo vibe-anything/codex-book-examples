@@ -24,9 +24,12 @@ const INDEX_CARD_MAP = [
 const SECTOR_INDEX_MAP = [
   { name: "반도체", idxCsf: "KRX시리즈", idxNm: "KRX 반도체" },
   { name: "자동차", idxCsf: "KRX시리즈", idxNm: "KRX 자동차" },
+  { name: "2차전지", idxCsf: "테마지수", idxNm: "KRX 2차전지 TOP 10 지수" },
+  { name: "조선", idxCsf: "테마지수", idxNm: "KRX 조선 TOP10 지수" },
   { name: "금융", idxCsf: "KRX시리즈", idxNm: "KRX 300 금융" },
   { name: "헬스케어", idxCsf: "KRX시리즈", idxNm: "KRX 헬스케어" },
   { name: "유통", idxCsf: "KOSPI시리즈", idxNm: "유통" },
+  { name: "게임", idxCsf: "테마지수", idxNm: "KRX 게임 TOP 10 지수" },
   { name: "방송통신", idxCsf: "KRX시리즈", idxNm: "KRX 방송통신" },
   { name: "오락·문화", idxCsf: "KOSPI시리즈", idxNm: "오락·문화" },
   { name: "건설", idxCsf: "KRX시리즈", idxNm: "KRX 건설" },
@@ -257,7 +260,7 @@ function buildMarketSummary(stocks) {
   };
 }
 
-function buildSectors(indexItems) {
+export function buildSectors(indexItems) {
   return SECTOR_INDEX_MAP.map((sector) => {
     const item = findIndexItem(indexItems, sector);
 

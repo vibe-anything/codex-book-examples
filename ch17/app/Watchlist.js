@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import styles from "./page.module.css";
 
-const STORAGE_KEY = "korea-market-dashboard-watchlist";
 const MAX_SEARCH_RESULTS = 8;
+
+function normalizeCodes(value) {
+  return Array.isArray(value) ? value.filter((code) => typeof code === "string") : [];
+}
 
 function formatRate(value) {
   const sign = value > 0 ? "+" : "";
@@ -17,23 +20,25 @@ function movementClass(value) {
   return styles.neutral;
 }
 
-function readStoredCodes() {
-  try {
-    const storedValue = window.localStorage.getItem(STORAGE_KEY);
-    const parsedValue = JSON.parse(storedValue);
+async function requestWatchlist(url, options = {}) {
+  const response = await fetch(url, {
+    cache: "no-store",
+    ...options,
+  });
+  const body = await response.json().catch(() => ({}));
 
-    return Array.isArray(parsedValue)
-      ? parsedValue.filter((code) => typeof code === "string")
-      : [];
-  } catch {
-    return [];
+  if (!response.ok) {
+    throw new Error(body.error ?? "Watchlist request failed.");
   }
+
+  return normalizeCodes(body.codes);
 }
 
-export default function Watchlist({ stocks = [] }) {
+export default function Watchlist({ stocks = [], initialSavedCodes = [] }) {
   const [query, setQuery] = useState("");
-  const [savedCodes, setSavedCodes] = useState([]);
-  const [isReady, setIsReady] = useState(false);
+  const [savedCodes, setSavedCodes] = useState(() => normalizeCodes(initialSavedCodes));
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const stockByCode = useMemo(
     () => new Map(stocks.map((stock) => [stock.code, stock])),
@@ -61,25 +66,66 @@ export default function Watchlist({ stocks = [] }) {
   }, [query, stocks]);
 
   useEffect(() => {
-    setSavedCodes(readStoredCodes());
-    setIsReady(true);
+    let isMounted = true;
+
+    async function loadWatchlist() {
+      try {
+        const codes = await requestWatchlist("/api/watchlist");
+
+        if (isMounted) {
+          setSavedCodes(codes);
+          setErrorMessage("");
+        }
+      } catch {
+        if (isMounted) {
+          setErrorMessage("관심 종목을 불러오지 못했습니다.");
+        }
+      }
+    }
+
+    loadWatchlist();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  useEffect(() => {
-    if (!isReady) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedCodes));
-  }, [isReady, savedCodes]);
+  async function addStock(code) {
+    setIsSaving(true);
+    setErrorMessage("");
 
-  function addStock(code) {
-    setSavedCodes((currentCodes) => {
-      if (currentCodes.includes(code)) return currentCodes;
-      return [...currentCodes, code];
-    });
-    setQuery("");
+    try {
+      const codes = await requestWatchlist("/api/watchlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stockCode: code }),
+      });
+
+      setSavedCodes(codes);
+      setQuery("");
+    } catch {
+      setErrorMessage("관심 종목을 저장하지 못했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  function removeStock(code) {
-    setSavedCodes((currentCodes) => currentCodes.filter((currentCode) => currentCode !== code));
+  async function removeStock(code) {
+    setIsSaving(true);
+    setErrorMessage("");
+
+    try {
+      const codes = await requestWatchlist(
+        `/api/watchlist?stockCode=${encodeURIComponent(code)}`,
+        { method: "DELETE" }
+      );
+
+      setSavedCodes(codes);
+    } catch {
+      setErrorMessage("관심 종목을 해제하지 못했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function toggleStock(code) {
@@ -120,6 +166,7 @@ export default function Watchlist({ stocks = [] }) {
                     className={styles.searchResult}
                     key={stock.code}
                     type="button"
+                    disabled={isSaving}
                     onClick={() => toggleStock(stock.code)}
                     aria-label={`${stock.name} ${isSaved ? "관심 종목 해제" : "관심 종목 추가"}`}
                   >
@@ -138,6 +185,8 @@ export default function Watchlist({ stocks = [] }) {
         </div>
       </div>
 
+      {errorMessage && <p className={styles.watchlistStatus}>{errorMessage}</p>}
+
       {selectedStocks.length > 0 ? (
         <div className={styles.watchlistCards}>
           {selectedStocks.map((stock) => (
@@ -145,6 +194,7 @@ export default function Watchlist({ stocks = [] }) {
               <button
                 className={styles.removeWatch}
                 type="button"
+                disabled={isSaving}
                 onClick={() => removeStock(stock.code)}
                 aria-label={`${stock.name} 관심 종목 해제`}
                 title="관심 종목 해제"

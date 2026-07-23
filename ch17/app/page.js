@@ -1,5 +1,6 @@
 import styles from "./page.module.css";
 import { getMarketData } from "../lib/marketData.js";
+import { getWatchlistCodes } from "../lib/watchlistStore.js";
 import Watchlist from "./Watchlist.js";
 
 export const dynamic = "force-dynamic";
@@ -136,8 +137,19 @@ function StockTable({ title, description, stocks }) {
   );
 }
 
+async function getInitialWatchlistCodes() {
+  try {
+    return await getWatchlistCodes();
+  } catch {
+    return [];
+  }
+}
+
 export default async function Home() {
-  const marketData = await getMarketData();
+  const [marketData, watchlistCodes] = await Promise.all([
+    getMarketData(),
+    getInitialWatchlistCodes(),
+  ]);
   const { indices, marketSummary, sectors, topStocks } = marketData;
 
   return (
@@ -155,7 +167,7 @@ export default async function Home() {
         </aside>
       </header>
 
-      <Watchlist stocks={marketData.stockSearchItems} />
+      <Watchlist stocks={marketData.stockSearchItems} initialSavedCodes={watchlistCodes} />
 
       <div className={styles.indexGrid}>
         {indices.map((index) => (

@@ -159,6 +159,19 @@ export default async function Home() {
           <p className={styles.eyebrow}>Korea Market Snapshot</p>
           <h1>국내 시장 대시보드</h1>
           <p className={styles.lead}>지수, 업종 흐름, 주요 종목을 한 화면에서 확인합니다.</p>
+          <a
+            href="/compare"
+            style={{
+              display: "inline-flex",
+              marginTop: "16px",
+              color: "var(--accent)",
+              fontWeight: 700,
+              textDecoration: "underline",
+              textUnderlineOffset: "4px",
+            }}
+          >
+            종목 비교하기 →
+          </a>
         </div>
         <aside className={styles.notice}>
           <strong>{marketData.asOf}</strong>
