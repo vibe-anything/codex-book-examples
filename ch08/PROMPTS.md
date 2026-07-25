@@ -37,3 +37,11 @@ npm install
 
 npm run dev
 ```
+
+```
+# 3000번 포트를 쓰는 프로세스 확인
+lsof -i :3000
+
+# 표시된 PID로 종료
+kill -9 <PID>
+```
