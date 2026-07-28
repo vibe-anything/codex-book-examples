@@ -48,11 +48,11 @@ export function validateQuery(params) {
 }
 
 export async function fetchTransactions(query, env = process.env, fetchImpl = fetch) {
-  if (!env.PUBLIC_DATA_API_KEY) {
+  if (!env.PUBLIC_DATA_SERVICE_KEY) {
     return createEmptyResult('API_KEY_MISSING', query);
   }
 
-  const response = await fetchImpl(buildRequestUrl(query, env.PUBLIC_DATA_API_KEY), {
+  const response = await fetchImpl(buildRequestUrl(query, env.PUBLIC_DATA_SERVICE_KEY), {
     headers: {
       accept: 'application/xml'
     },

@@ -55,7 +55,7 @@ describe('fetchTransactions', () => {
       return createXmlResponse(successXml);
     };
 
-    const result = await fetchTransactions(query, { PUBLIC_DATA_API_KEY: 'server-only-key' }, fetchImpl);
+    const result = await fetchTransactions(query, { PUBLIC_DATA_SERVICE_KEY: 'server-only-key' }, fetchImpl);
 
     assert.equal(result.status, 'SUCCESS');
     assert.equal(requestedUrl.searchParams.get('LAWD_CD'), '11680');
@@ -93,15 +93,15 @@ describe('fetchTransactions', () => {
   });
 
   it('can represent empty and failed upstream states separately', async () => {
-    const empty = await fetchTransactions(query, { PUBLIC_DATA_API_KEY: 'key' }, async () => createXmlResponse(emptyXml));
-    const failed = await fetchTransactions(query, { PUBLIC_DATA_API_KEY: 'key' }, async () => createXmlResponse(serviceErrorXml));
+    const empty = await fetchTransactions(query, { PUBLIC_DATA_SERVICE_KEY: 'key' }, async () => createXmlResponse(emptyXml));
+    const failed = await fetchTransactions(query, { PUBLIC_DATA_SERVICE_KEY: 'key' }, async () => createXmlResponse(serviceErrorXml));
 
     assert.equal(empty.status, 'EMPTY');
     assert.equal(failed.status, 'API_REQUEST_FAILED');
   });
 
   it('classifies upstream authentication errors separately', async () => {
-    const result = await fetchTransactions(query, { PUBLIC_DATA_API_KEY: 'bad-key' }, async () => createXmlResponse(authErrorXml));
+    const result = await fetchTransactions(query, { PUBLIC_DATA_SERVICE_KEY: 'bad-key' }, async () => createXmlResponse(authErrorXml));
 
     assert.equal(result.status, 'API_AUTH_ERROR');
     assert.deepEqual(result.items, []);

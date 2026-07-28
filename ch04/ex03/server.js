@@ -72,7 +72,7 @@ export function validateQuery(params) {
 }
 
 export async function fetchTransactions(query, env = process.env) {
-  if (!env.PUBLIC_DATA_API_KEY) {
+  if (!env.PUBLIC_DATA_SERVICE_KEY) {
     return {
       status: 'API_KEY_MISSING',
       summary: {

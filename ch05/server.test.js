@@ -47,7 +47,7 @@ describe('fetchTransactions', () => {
   });
 
   it('returns mock rows through the server boundary when a key exists', async () => {
-    const result = await fetchTransactions(query, { PUBLIC_DATA_API_KEY: 'server-only-key' });
+    const result = await fetchTransactions(query, { PUBLIC_DATA_SERVICE_KEY: 'server-only-key' });
 
     assert.equal(result.status, 'SUCCESS');
     assert.equal(result.items.length, 2);
@@ -63,8 +63,8 @@ describe('fetchTransactions', () => {
   });
 
   it('can represent empty and failed upstream states separately', async () => {
-    const empty = await fetchTransactions(query, { PUBLIC_DATA_API_KEY: 'key', MOCK_EMPTY: 'true' });
-    const failed = await fetchTransactions(query, { PUBLIC_DATA_API_KEY: 'key', MOCK_API_FAILURE: 'true' });
+    const empty = await fetchTransactions(query, { PUBLIC_DATA_SERVICE_KEY: 'key', MOCK_EMPTY: 'true' });
+    const failed = await fetchTransactions(query, { PUBLIC_DATA_SERVICE_KEY: 'key', MOCK_API_FAILURE: 'true' });
 
     assert.equal(empty.status, 'EMPTY');
     assert.equal(failed.status, 'API_REQUEST_FAILED');

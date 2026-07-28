@@ -2,7 +2,7 @@
 
 ## 개요
 
-이 프로젝트는 아파트 매매 실거래가를 조회하기 위한 서버 API를 제공한다. 브라우저는 공공데이터 API를 직접 호출하지 않고 Next.js 서버 라우트인 `GET /api/transactions`를 호출한다. 공공데이터 인증키는 서버 환경변수 `PUBLIC_DATA_API_KEY`에서만 읽으므로 클라이언트에 노출되지 않는다.
+이 프로젝트는 아파트 매매 실거래가를 조회하기 위한 서버 API를 제공한다. 브라우저는 공공데이터 API를 직접 호출하지 않고 Next.js 서버 라우트인 `GET /api/transactions`를 호출한다. 공공데이터 인증키는 서버 환경변수 `PUBLIC_DATA_SERVICE_KEY`에서만 읽으므로 클라이언트에 노출되지 않는다.
 
 현재 `lib/transactions.js`는 실제 공공데이터 API 대신 샘플 거래 데이터를 반환한다. 실제 외부 API 호출은 이후 이 모듈의 `fetchTransactions` 함수에서 구현할 수 있다.
 
@@ -67,7 +67,7 @@ GET /api/transactions?regionCode=11680&dealYmd=202401&pageNo=1&numOfRows=10
 | --- | --- | --- |
 | `SUCCESS` | `200` | 조회에 성공했고 거래 내역이 있음 |
 | `EMPTY` | `200` | 조회에는 성공했지만 조건에 맞는 거래가 없음 |
-| `API_KEY_MISSING` | `200` | 서버에 `PUBLIC_DATA_API_KEY`가 설정되지 않음 |
+| `API_KEY_MISSING` | `200` | 서버에 `PUBLIC_DATA_SERVICE_KEY`가 설정되지 않음 |
 | `API_REQUEST_FAILED` | `200` | 외부 API 요청 또는 서버의 조회 작업에 실패함 |
 | `INVALID_INPUT` | `400` | 요청 파라미터 검증에 실패함 |
 
@@ -120,7 +120,7 @@ GET /api/transactions?regionCode=11680&dealYmd=202401&pageNo=1&numOfRows=10
 프로젝트 루트의 `.env`에 공공데이터 인증키를 설정한다.
 
 ```dotenv
-PUBLIC_DATA_API_KEY=발급받은_인증키
+PUBLIC_DATA_SERVICE_KEY=발급받은_인증키
 ```
 
 인증키를 소스 코드, 클라이언트 컴포넌트, 브라우저 로그에 기록하거나 저장소에 커밋하면 안 된다.
