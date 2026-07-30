@@ -1,10 +1,12 @@
-```
-cd ~/Projects/codex-book-examples/ch11
-
-mv 법정동코드\ 전체자료.txt legalDongCode.txt
+```powershell
+Rename-Item "법정동코드 전체자료.txt" legalDongCode.txt
 ```
 
+```bash
+mv "법정동코드 전체자료.txt" legalDongCode.txt
 ```
+
+```bash
 cat legalDongCode.txt
 ```
 
