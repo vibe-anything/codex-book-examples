@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "국내 시장 대시보드",
-  description: "공공데이터포털 데이터로 보는 국내 주식시장 분위기 대시보드",
+  title: "오늘의 국내 시장",
+  description: "국내 주식시장의 흐름을 한눈에 확인하는 대시보드",
 };
 
 export default function RootLayout({ children }) {
