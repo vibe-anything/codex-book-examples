@@ -24,8 +24,10 @@ export function RankingTable({ title, badge, rows, showTurnover = false }) {
               <th scope="row">{row.name}</th>
               <td>{formatPrice(row.price)}</td>
               {showTurnover && <td>{formatTurnover(row.turnover)}</td>}
-              <td className={`rate ${changeTone(row.changePercent)}`}>
-                {formatSigned(row.changePercent, 2)}%
+              <td>
+                <span className={`rate-badge ${changeTone(row.changePercent)}`}>
+                  {formatSigned(row.changePercent, 2)}%
+                </span>
               </td>
             </tr>
           ))}

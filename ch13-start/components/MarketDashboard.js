@@ -26,10 +26,7 @@ export function MarketDashboard({ snapshot }) {
 
       <section className="rankings" aria-labelledby="ranking-title">
         <div className="section-heading ranking-heading">
-          <div>
-            <p className="section-kicker">RANKING</p>
-            <h2 id="ranking-title">오늘의 주요 종목</h2>
-          </div>
+          <h2 id="ranking-title">오늘의 주요 종목</h2>
         </div>
         <div className="ranking-grid">
           <RankingTable title="상승률 상위" badge="up" rows={snapshot.rankings.gainers} />

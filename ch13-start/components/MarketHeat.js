@@ -10,6 +10,13 @@ export function MarketHeat({ breadth }) {
         <strong>{heat.toFixed(1)}</strong>
         <span>%</span>
       </div>
+      <p className="heat-description">3% 이상 상승 종목 비율</p>
+      <progress
+        className="heat-progress"
+        max="100"
+        value={heat}
+        aria-label={`3% 이상 상승 종목 비율 ${heat.toFixed(1)}%`}
+      />
     </article>
   );
 }

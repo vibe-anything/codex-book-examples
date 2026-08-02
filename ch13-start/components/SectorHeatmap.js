@@ -4,10 +4,7 @@ export function SectorHeatmap({ sectors }) {
   return (
     <section aria-labelledby="sector-title">
       <div className="section-heading">
-        <div>
-          <p className="section-kicker">SECTOR</p>
-          <h2 id="sector-title">업종 히트맵</h2>
-        </div>
+        <h2 id="sector-title">업종 히트맵</h2>
         <div className="legend" aria-label="색상 범례">
           <span><i className="legend-chip down" />하락</span>
           <span><i className="legend-chip flat" />보합</span>

@@ -11,12 +11,13 @@ export function IndexCard({ index }) {
         <p className="index-value">{formatNumber(index.value, 2)}</p>
         <p className={`index-change ${tone}`}>
           <span>{formatSigned(index.change, 2)}</span>
-          <span>{formatSigned(index.changePercent, 2)}%</span>
+          <span className="change-badge">{formatSigned(index.changePercent, 2)}%</span>
         </p>
       </div>
       <Sparkline
         values={index.intraday}
         tone={tone}
+        indexCode={index.code}
         label={`${index.name} 장중 흐름, ${tone === "up" ? "상승" : tone === "down" ? "하락" : "보합"}`}
       />
     </article>
