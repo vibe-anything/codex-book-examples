@@ -3,79 +3,97 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const COMMAND_FIELDS = new Set(["cmd", "command", "script"]);
 const PATH_FIELD_PATTERN =
-  /(^|_)(file|file_path|filename|path|target|target_file|notebook_path)(_|$)/i;
-const DIRECT_FILE_TOOL_PATTERN =
-  /(^|\.)(read|open|view|edit|multiedit|write|notebookedit|apply_patch)$/i;
+  /(^|_)(file|file_path|filepath|filename|notebook_path|path|paths|source|target|target_file|destination|uri)(_|$)/i;
 const SECRET_NAME_PATTERN =
   /(^|_)(api_?key|key|token|secret|password|passwd|pwd|auth|credential|private|service_?key|access_?key|client_?secret)(_|$)/i;
-const READER_COMMANDS = new Set([
+const ENV_ACCESS_COMMANDS = new Set([
   ".",
   "ack",
   "ag",
   "awk",
+  "base64",
+  "bash",
   "bat",
   "batcat",
   "bun",
   "cat",
+  "chmod",
+  "chown",
   "code",
+  "cmp",
   "cp",
-  "cursor",
+  "curl",
+  "cut",
+  "dash",
+  "dd",
   "deno",
-  "emacs",
+  "dotenv",
+  "diff",
   "egrep",
+  "emacs",
   "fgrep",
+  "file",
+  "fish",
   "grep",
+  "git",
   "gzip",
   "head",
   "hexdump",
+  "install",
+  "jq",
   "less",
+  "mapfile",
   "mate",
+  "md5",
+  "md5sum",
   "more",
+  "mv",
   "nano",
   "nl",
   "node",
   "nvim",
   "od",
   "open",
+  "openssl",
   "pbcopy",
   "perl",
   "python",
   "python3",
+  "read",
   "rg",
+  "rm",
   "rsync",
   "ruby",
   "scp",
   "sed",
+  "sha1sum",
+  "sha256sum",
+  "shasum",
+  "sh",
+  "sort",
   "source",
   "strings",
   "subl",
   "tail",
   "tar",
+  "tee",
+  "touch",
+  "tr",
+  "truncate",
+  "uniq",
+  "unlink",
   "vi",
   "view",
   "vim",
+  "wc",
   "xxd",
+  "yq",
   "zip",
+  "zsh",
 ]);
-
-function readStdin() {
-  return fs.readFileSync(0, "utf8");
-}
-
-function allow() {
-  process.stdout.write(JSON.stringify({ continue: true }));
-}
-
-function block(reason) {
-  process.stdout.write(
-    JSON.stringify({
-      decision: "block",
-      reason,
-    })
-  );
-}
 
 function parseJson(value, fallback = null) {
   try {
@@ -128,34 +146,21 @@ function isLikelySecretValue(name, value) {
   if (SECRET_NAME_PATTERN.test(name)) return true;
   if (value.length < 20) return false;
   if (/^(https?:)?\/\//i.test(value)) return false;
-  if (/^(true|false|null|undefined|development|production|test)$/i.test(value)) return false;
+  if (/^(true|false|null|undefined|development|production|test)$/i.test(value)) {
+    return false;
+  }
   if (/^-?\d+(?:\.\d+)?$/.test(value)) return false;
   return /[A-Za-z]/.test(value) && /[0-9%+/=_-]/.test(value);
 }
 
-function addSecretValue(values, value) {
-  if (value && value.length >= 4) values.add(value);
-
-  try {
-    const decoded = decodeURIComponent(value);
-    if (decoded !== value && decoded.length >= 4) values.add(decoded);
-  } catch {
-    // Ignore non-URL-encoded values.
-  }
-}
-
-function readSensitiveEnvValues(cwd) {
-  const envPath = path.join(cwd, ".env");
+function readSensitiveEnvValues(projectRoot) {
+  const envPath = path.join(projectRoot, ".env");
   if (!fs.existsSync(envPath)) return [];
 
-  const values = new Set();
-  const entries = parseEnvEntries(fs.readFileSync(envPath, "utf8"));
-
-  entries.forEach(({ name, value }) => {
-    if (isLikelySecretValue(name, value)) addSecretValue(values, value);
-  });
-
-  return [...values].sort((a, b) => b.length - a.length);
+  return parseEnvEntries(fs.readFileSync(envPath, "utf8"))
+    .filter(({ name, value }) => isLikelySecretValue(name, value))
+    .map(({ value }) => value)
+    .sort((left, right) => right.length - left.length);
 }
 
 function collectStrings(value, strings = [], seen = new WeakSet()) {
@@ -164,8 +169,7 @@ function collectStrings(value, strings = [], seen = new WeakSet()) {
     return strings;
   }
 
-  if (!value || typeof value !== "object") return strings;
-  if (seen.has(value)) return strings;
+  if (!value || typeof value !== "object" || seen.has(value)) return strings;
   seen.add(value);
 
   if (Array.isArray(value)) {
@@ -200,8 +204,8 @@ function collectPathFieldValues(value, paths = [], seen = new WeakSet()) {
   seen.add(value);
 
   Object.entries(value).forEach(([key, item]) => {
-    if (typeof item === "string" && PATH_FIELD_PATTERN.test(key) && key !== "cwd") {
-      paths.push(item);
+    if (PATH_FIELD_PATTERN.test(key) && key !== "cwd") {
+      collectStrings(item, paths);
       return;
     }
 
@@ -216,9 +220,9 @@ function collectPathFieldValues(value, paths = [], seen = new WeakSet()) {
 function stripShellDecorations(value) {
   return value
     .trim()
-    .replace(/^["'`]+|["'`]+$/g, "")
-    .replace(/^[=:+,]+/, "")
-    .replace(/[),;]+$/g, "");
+    .replace(/^file:\/\//i, "")
+    .replace(/^["'`@([{]+|["'`),;\]}]+$/g, "")
+    .replace(/^[=:+]+/, "");
 }
 
 function isProtectedEnvBasename(basename) {
@@ -229,20 +233,15 @@ function isProtectedEnvBasename(basename) {
   );
 }
 
-function isProtectedEnvPath(value, cwd) {
-  const candidates = String(value)
-    .split("=")
-    .flatMap((part) => part.split(":"))
+function isProtectedEnvPath(value) {
+  return String(value)
+    .split(/[=:,]/)
     .map(stripShellDecorations)
-    .filter(Boolean);
-
-  return candidates.some((candidate) => {
-    const normalized = candidate.replaceAll("\\", "/");
-    if (isProtectedEnvBasename(path.posix.basename(normalized))) return true;
-
-    const absolutePath = path.isAbsolute(candidate) ? candidate : path.resolve(cwd, candidate);
-    return isProtectedEnvBasename(path.basename(absolutePath));
-  });
+    .filter(Boolean)
+    .some((candidate) => {
+      const normalized = candidate.replaceAll("\\", "/");
+      return isProtectedEnvBasename(path.posix.basename(normalized));
+    });
 }
 
 function tokenizeShellLike(command) {
@@ -289,61 +288,81 @@ function commandName(token) {
   return path.basename(stripShellDecorations(token));
 }
 
-function hasShellEnvReadAttempt(command, cwd) {
-  const tokens = tokenizeShellLike(command);
-  const hasEnvPath = tokens.some((token) => isProtectedEnvPath(token, cwd));
-
-  if (!hasEnvPath) return false;
-  if (tokens.some((token) => READER_COMMANDS.has(commandName(token)))) return true;
-  if (/<\s*['"]?(?:\.\/)?\.env(?:['"]?|\s|$)/.test(command)) return true;
-  if (/--env-file(?:=|\s+)['"]?(?:\.\/)?\.env(?:['"]?|\s|$)/.test(command)) return true;
-
-  return false;
-}
-
 function hasCodeEnvReadAttempt(text) {
-  const envPathPattern = String.raw`['"\`](?:\.{0,2}\/)?\.env(?:\.(?:local|development|production|test)(?:\.local)?)?['"\`]`;
+  const envPathPattern = String.raw`['\"\`](?:[^'\"\`\r\n]*[\\/])?\.env(?:\.(?:local|development|production|test)(?:\.local)?)?['\"\`]`;
   const patterns = [
-    new RegExp(String.raw`\b(?:readFileSync|readFile|createReadStream|openSync|open)\s*\([^)]*${envPathPattern}`, "i"),
-    new RegExp(String.raw`\b(?:Deno\.readTextFile|Deno\.readFile|Bun\.file)\s*\([^)]*${envPathPattern}`, "i"),
-    new RegExp(String.raw`\bdotenv(?:Flow)?\.config\s*\(`, "i"),
-    new RegExp(String.raw`\brequire\s*\(\s*['"\`]dotenv['"\`]\s*\)\.config\s*\(`, "i"),
+    new RegExp(
+      String.raw`\b(?:readFileSync|readFile|read_to_string|readText|read_text|read_bytes|createReadStream|openSync|open|fopen)\s*\([\s\S]{0,400}?${envPathPattern}`,
+      "i"
+    ),
+    new RegExp(
+      String.raw`\b(?:Deno\.readTextFile|Deno\.readFile|Bun\.file)\s*\([\s\S]{0,400}?${envPathPattern}`,
+      "i"
+    ),
+    new RegExp(
+      String.raw`\bPath\s*\(\s*${envPathPattern}\s*\)\s*\.(?:read_text|read_bytes|open)\s*\(`,
+      "i"
+    ),
+    new RegExp(
+      String.raw`\bFile\.(?:read|open|binread)\s*\(\s*${envPathPattern}`,
+      "i"
+    ),
+    /\bdotenv(?:Flow)?\.config\s*\(/i,
+    /\brequire\s*\(\s*['\"`]dotenv['\"`]\s*\)\.config\s*\(/i,
+    /\b(?:load_dotenv|dotenv_values)\s*\(/i,
+    /\bprocess\.loadEnvFile\s*\(/i,
+    /['\"`]dotenv\/config['\"`]/i,
   ];
 
   return patterns.some((pattern) => pattern.test(text));
 }
 
-function hasPatchTargetingEnvFile(text, cwd) {
+function hasShellEnvAccessAttempt(command) {
+  const tokens = tokenizeShellLike(command);
+  if (!tokens.some(isProtectedEnvPath)) return false;
+
+  if (tokens.some((token) => ENV_ACCESS_COMMANDS.has(commandName(token)))) return true;
+  if (/[<>]{1,2}\s*['\"]?(?:\.\/)?\.env(?:\.|['\"]|\s|$)/i.test(command)) return true;
+  if (/--env-file(?:=|\s+)['\"]?(?:\.\/)?\.env(?:\.|['\"]|\s|$)/i.test(command)) {
+    return true;
+  }
+
+  return hasCodeEnvReadAttempt(command);
+}
+
+function hasPatchTargetingEnvFile(text) {
   const pattern = /^\*\*\* (?:Add|Update|Delete) File: (.+)$|^\*\*\* Move to: (.+)$/gm;
   let match;
 
   while ((match = pattern.exec(text)) !== null) {
-    if (isProtectedEnvPath(match[1] || match[2], cwd)) return true;
+    if (isProtectedEnvPath(match[1] || match[2])) return true;
   }
 
   return false;
 }
 
-function hasDirectEnvFileAttempt(toolName, toolInput, cwd) {
+function isDirectFileTool(toolName) {
+  const normalized = String(toolName).toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  return /(^|_)(read|open|view|edit|write|delete|move|copy)(_|$)/.test(normalized);
+}
+
+function hasDirectEnvFileAttempt(toolName, toolInput) {
   const allText = collectStrings(toolInput).join("\n");
 
-  if (DIRECT_FILE_TOOL_PATTERN.test(toolName)) {
-    if (collectPathFieldValues(toolInput).some((filePath) => isProtectedEnvPath(filePath, cwd))) {
-      return true;
-    }
-  }
-
-  if (hasPatchTargetingEnvFile(allText, cwd)) return true;
-  if (collectCommandStrings(toolInput).some((command) => hasShellEnvReadAttempt(command, cwd))) {
+  if (
+    isDirectFileTool(toolName) &&
+    collectPathFieldValues(toolInput).some(isProtectedEnvPath)
+  ) {
     return true;
   }
 
+  if (hasPatchTargetingEnvFile(allText)) return true;
+  if (collectCommandStrings(toolInput).some(hasShellEnvAccessAttempt)) return true;
   return hasCodeEnvReadAttempt(allText);
 }
 
 function containsSensitiveEnvValue(toolInput, sensitiveValues) {
   if (sensitiveValues.length === 0) return false;
-
   const inspectedText = collectStrings(toolInput).join("\n");
   return sensitiveValues.some((value) => inspectedText.includes(value));
 }
@@ -351,41 +370,71 @@ function containsSensitiveEnvValue(toolInput, sensitiveValues) {
 function blockReason(kind) {
   const firstLine =
     kind === "secret"
-      ? "`.env`에 있는 민감 값이 도구 입력에 그대로 포함되어 있어 차단했습니다."
-      : "`.env` 파일을 직접 읽거나 여는 시도가 감지되어 차단했습니다.";
+      ? "`.env`에 있는 실제 인증키 값이 도구 입력에 그대로 포함되어 있어 차단했습니다."
+      : kind === "inspection-error"
+        ? "인증키 보호 검사를 안전하게 완료할 수 없어 도구 실행을 차단했습니다."
+        : "`.env` 파일을 직접 읽거나 여는 시도가 감지되어 차단했습니다.";
 
   return [
     firstLine,
     "",
-    "인증키는 명령, 코드, 패치에 붙여넣지 말고 `.env`에만 보관하세요.",
-    "앱 코드에서는 키 값을 직접 다루지 말고 기존처럼 `process.env.환경변수명` 참조를 유지하세요.",
-    "검증이 필요하면 키 값을 출력하지 않는 방식으로 환경변수 존재 여부만 확인하세요.",
+    "인증키는 명령이나 코드에 직접 붙여넣지 말고 `.env`에만 보관하세요.",
+    "앱 코드에서는 실제 값 대신 `process.env.환경변수명` 참조를 그대로 유지하세요.",
+    "검증이 필요하면 키 값을 출력하지 말고 환경변수의 존재 여부만 확인하세요.",
   ].join("\n");
 }
 
-function main() {
-  const input = parseJson(readStdin(), {});
-  const cwd = input.cwd || process.cwd();
-  const toolName = String(input.tool_name || input.name || "");
-  const toolInput = input.tool_input || input.toolInput || input.input || {};
-
-  if (input.hook_event_name && input.hook_event_name !== "PreToolUse") {
-    allow();
-    return;
-  }
-
-  if (hasDirectEnvFileAttempt(toolName, toolInput, cwd)) {
-    block(blockReason("direct"));
-    return;
-  }
-
-  const sensitiveValues = readSensitiveEnvValues(cwd);
-  if (containsSensitiveEnvValue(toolInput, sensitiveValues)) {
-    block(blockReason("secret"));
-    return;
-  }
-
-  allow();
+function deny(kind) {
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: blockReason(kind),
+    },
+  };
 }
 
-main();
+function inspectToolUse(input, projectRoot = PROJECT_ROOT) {
+  try {
+    if (input.hook_event_name && input.hook_event_name !== "PreToolUse") return null;
+
+    const toolName = String(input.tool_name || input.name || "");
+    const toolInput = input.tool_input || input.toolInput || input.input || {};
+
+    if (hasDirectEnvFileAttempt(toolName, toolInput)) return deny("direct");
+
+    const sensitiveValues = readSensitiveEnvValues(projectRoot);
+    if (containsSensitiveEnvValue(toolInput, sensitiveValues)) return deny("secret");
+    return null;
+  } catch {
+    return deny("inspection-error");
+  }
+}
+
+function main() {
+  try {
+    const input = parseJson(fs.readFileSync(0, "utf8"));
+    if (!input || typeof input !== "object") {
+      process.stdout.write(JSON.stringify(deny("inspection-error")));
+      return;
+    }
+
+    const result = inspectToolUse(input);
+    if (result) process.stdout.write(JSON.stringify(result));
+  } catch {
+    process.stdout.write(JSON.stringify(deny("inspection-error")));
+  }
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  blockReason,
+  hasCodeEnvReadAttempt,
+  hasDirectEnvFileAttempt,
+  hasShellEnvAccessAttempt,
+  inspectToolUse,
+  isProtectedEnvPath,
+  parseEnvEntries,
+  readSensitiveEnvValues,
+};
