@@ -1,0 +1,63 @@
+export const marketSnapshot = {
+  asOf: "2026.07.31 15:30",
+  isMock: true,
+  indices: [
+    {
+      code: "KOSPI",
+      name: "KOSPI",
+      value: 2846.72,
+      change: 24.58,
+      changePercent: 0.87,
+      intraday: [2822.1, 2828.4, 2825.7, 2836.2, 2832.9, 2841.5, 2839.4, 2846.72],
+    },
+    {
+      code: "KOSDAQ",
+      name: "KOSDAQ",
+      value: 792.64,
+      change: -3.87,
+      changePercent: -0.49,
+      intraday: [796.5, 798.2, 795.4, 797.1, 793.8, 791.9, 794.2, 792.64],
+    },
+  ],
+  marketBreadth: {
+    totalStocks: 2734,
+    stocksUpThreePercent: 421,
+  },
+  sectors: [
+    { name: "반도체", changePercent: 2.84 },
+    { name: "자동차", changePercent: 1.42 },
+    { name: "은행", changePercent: 0.63 },
+    { name: "증권", changePercent: 3.18 },
+    { name: "건설", changePercent: -0.74 },
+    { name: "철강", changePercent: -1.36 },
+    { name: "운송", changePercent: 0.21 },
+    { name: "방송통신", changePercent: -0.18 },
+    { name: "조선", changePercent: 2.09 },
+    { name: "게임", changePercent: -2.47 },
+    { name: "2차전지", changePercent: -3.12 },
+    { name: "화장품", changePercent: 1.76 },
+  ],
+  rankings: {
+    gainers: [
+      { name: "한빛테크", price: 18420, changePercent: 29.99 },
+      { name: "세림바이오", price: 7350, changePercent: 24.58 },
+      { name: "미래로보틱스", price: 42600, changePercent: 18.33 },
+      { name: "동해에너지", price: 12980, changePercent: 15.89 },
+      { name: "네오소재", price: 25150, changePercent: 13.67 },
+    ],
+    losers: [
+      { name: "코어게임즈", price: 9860, changePercent: -14.92 },
+      { name: "그린셀", price: 21300, changePercent: -11.25 },
+      { name: "온누리제약", price: 16740, changePercent: -9.86 },
+      { name: "에이스모빌리티", price: 5820, changePercent: -8.35 },
+      { name: "스마트콘텐츠", price: 11450, changePercent: -7.92 },
+    ],
+    turnover: [
+      { name: "삼성전자", price: 73200, turnover: 14820, changePercent: 1.81 },
+      { name: "SK하이닉스", price: 226500, turnover: 12640, changePercent: 3.42 },
+      { name: "현대차", price: 247000, turnover: 6840, changePercent: 1.23 },
+      { name: "한화오션", price: 41950, turnover: 5720, changePercent: 4.09 },
+      { name: "LG에너지솔루션", price: 346500, turnover: 4910, changePercent: -2.39 },
+    ],
+  },
+};
