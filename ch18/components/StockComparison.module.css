@@ -1,0 +1,227 @@
+.shell {
+  width: min(100%, 1120px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 40px 24px;
+  color: var(--text-primary, #191f28);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  margin-bottom: 4px;
+  color: var(--text-secondary, #6b7684);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.introduction {
+  margin-top: 8px;
+  color: var(--text-secondary, #6b7684);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.homeLink {
+  flex: 0 0 auto;
+  border: 1px solid var(--border, #d1d6db);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #191f28);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.homeLink:hover {
+  background: var(--surface-muted, #f2f4f6);
+}
+
+.homeLink:focus-visible,
+.selectLabel select:focus-visible {
+  outline: 3px solid var(--focus-ring, rgba(49, 130, 246, .35));
+  outline-offset: 2px;
+}
+
+.controls {
+  margin-bottom: 14px;
+  border: 1px solid var(--border, #e5e8eb);
+  border-radius: 18px;
+  padding: 20px;
+  background: var(--surface, #fff);
+  box-shadow: var(--shadow-card, 0 4px 16px rgba(25, 31, 40, .04));
+}
+
+.controlGrid,
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.selectLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text-secondary, #4e5968);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.selectLabel select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border, #d1d6db);
+  border-radius: 12px;
+  padding: 0 38px 0 12px;
+  background: var(--surface-muted, #f9fafb);
+  color: var(--text-primary, #191f28);
+  font: inherit;
+  font-size: 14px;
+}
+
+.selectLabel select[aria-invalid="true"] {
+  border-color: var(--negative, #3182f6);
+}
+
+.selectionMessage {
+  min-height: 20px;
+  margin-top: 10px;
+  color: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.selectionMessage.visible {
+  color: var(--negative, #246cca);
+}
+
+.card {
+  min-height: 260px;
+  border: 1px solid var(--border, #e5e8eb);
+  border-radius: 20px;
+  padding: 28px;
+  background: var(--surface, #fff);
+  box-shadow: var(--shadow-card, 0 4px 16px rgba(25, 31, 40, .04));
+}
+
+.stockIdentity {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border, #e5e8eb);
+}
+
+.stockIdentity h2 {
+  color: var(--text-primary, #191f28);
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.stockIdentity p {
+  margin-top: 5px;
+  color: var(--text-secondary, #8b95a1);
+  font-size: 12px;
+}
+
+.quoteList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 26px 0 0;
+}
+
+.quoteList div {
+  min-width: 0;
+}
+
+.quoteList dt {
+  color: var(--text-secondary, #6b7684);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.quoteList dd {
+  margin: 9px 0 0;
+  color: var(--text-primary, #191f28);
+  font-size: clamp(19px, 2.2vw, 28px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -.03em;
+  white-space: nowrap;
+}
+
+.quoteList dd.rate {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: clamp(17px, 1.8vw, 23px);
+}
+
+.rate.up {
+  background: var(--positive-muted, #fff0f0);
+  color: var(--positive, #d33a47);
+}
+
+.rate.down {
+  background: var(--negative-muted, #e8f3ff);
+  color: var(--negative, #246cca);
+}
+
+.rate.flat {
+  background: var(--surface-muted, #f2f4f6);
+  color: var(--text-secondary, #6b7684);
+}
+
+.empty {
+  border: 1px solid var(--border, #e5e8eb);
+  border-radius: 18px;
+  padding: 48px 24px;
+  background: var(--surface, #fff);
+  color: var(--text-secondary, #6b7684);
+  text-align: center;
+}
+
+.footer {
+  margin-top: 24px;
+  color: var(--text-secondary, #8b95a1);
+  font-size: 11px;
+  text-align: center;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 24px 16px;
+  }
+
+  .header,
+  .controlGrid,
+  .cardGrid,
+  .quoteList {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .card {
+    min-height: 0;
+  }
+}

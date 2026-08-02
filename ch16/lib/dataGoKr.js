@@ -9,7 +9,7 @@ export function requireDataGoKrServiceKey() {
 
   if (!serviceKey) {
     throw new Error(
-      `${DATA_GO_KR_SERVICE_KEY_ENV} is not set. Set it in your shell environment or add it to .env.`
+      `${DATA_GO_KR_SERVICE_KEY_ENV} is not set. Run npm run key:save or set the environment variable.`
     );
   }
 
