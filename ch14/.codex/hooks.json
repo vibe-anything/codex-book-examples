@@ -6,9 +6,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "project_dir=\"$PWD\"; while [ \"$project_dir\" != \"/\" ] && [ ! -f \"$project_dir/.codex/hooks/protect-env-secrets-before-tool.cjs\" ]; do project_dir=\"$(dirname \"$project_dir\")\"; done; node \"$project_dir/.codex/hooks/protect-env-secrets-before-tool.cjs\"",
+            "command": "project_dir=\"$PWD\"; while [ \"$project_dir\" != \"/\" ] && [ ! -f \"$project_dir/.codex/hooks/protect-auth-keys.cjs\" ]; do project_dir=\"$(dirname \"$project_dir\")\"; done; node \"$project_dir/.codex/hooks/protect-auth-keys.cjs\"",
             "timeout": 10,
-            "statusMessage": "인증키 노출 여부 확인 중"
+            "statusMessage": "인증키 노출 확인 중"
           }
         ]
       }
