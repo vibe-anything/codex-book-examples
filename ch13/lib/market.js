@@ -21,19 +21,12 @@ export function formatPrice(value) {
   return `${formatNumber(value)}원`;
 }
 
-export function formatTurnover(valueInWon) {
-  if (!Number.isFinite(valueInWon) || valueInWon < 0) return "-";
-
-  if (valueInWon >= 1_000_000_000_000) {
-    const trillion = valueInWon / 1_000_000_000_000;
+export function formatTurnover(valueInHundredMillions) {
+  if (valueInHundredMillions >= 10000) {
+    const trillion = valueInHundredMillions / 10000;
     return `${Number.isInteger(trillion) ? trillion : trillion.toFixed(1)}조원`;
   }
-
-  if (valueInWon >= 100_000_000) {
-    return `${formatNumber(Math.round(valueInWon / 100_000_000))}억원`;
-  }
-
-  return `${formatNumber(valueInWon)}원`;
+  return `${formatNumber(valueInHundredMillions)}억원`;
 }
 
 export function changeTone(value) {

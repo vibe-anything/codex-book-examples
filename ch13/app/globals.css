@@ -91,6 +91,7 @@ h1 {
   font-weight: 500;
 }
 
+.mock-badge,
 .source-badge {
   border: 1px solid var(--grey-200);
   border-radius: var(--radius-pill);
@@ -102,20 +103,10 @@ h1 {
   line-height: 1;
 }
 
-.source-badge.live {
-  border-color: #C8E6D2;
-  background: #EDF9F1;
-  color: #16834B;
-}
-
-.data-status-copy {
-  text-align: right;
-}
-
-.data-status-copy p {
-  margin-top: 3px;
-  color: var(--grey-500);
-  font-size: 11px;
+.source-badge {
+  border-color: #B7E4C7;
+  background: #F0FFF4;
+  color: #237A45;
 }
 
 .panel {
@@ -284,13 +275,6 @@ h1 {
   font-weight: 700;
   line-height: 1.4;
   letter-spacing: -.02em;
-}
-
-.section-note {
-  margin-top: 3px;
-  color: var(--grey-500);
-  font-size: 11px;
-  line-height: 1.4;
 }
 
 .legend {
