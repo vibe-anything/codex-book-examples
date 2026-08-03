@@ -1,389 +1,388 @@
-import { fetchDataGoKrJson } from "./dataGoKr.js";
+import { marketSnapshot as mockMarketSnapshot } from "../data/marketSnapshot.js";
+import {
+  fetchDataGoKrItems,
+  MARKET_INDEX_PATH,
+  STOCK_PRICE_PATH,
+} from "./dataGoKr.js";
 import {
   SUPABASE_PUBLISHABLE_KEY_ENV,
   SUPABASE_URL_ENV,
-  fetchLatestDailyStockPrices,
+  fetchLatestDailyQuotes,
 } from "./supabaseMarketData.js";
-import { exampleMarketSnapshot } from "../data/marketSnapshot.js";
 
-export const INDEX_ENDPOINT =
-  "https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getStockMarketIndex";
-export const STOCK_ENDPOINT =
-  "https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo";
+const MARKET_CATEGORIES = new Set(["KOSPI", "KOSDAQ"]);
+const RANKING_SIZE = 5;
+const MINIMUM_COMPLETE_STOCK_ROWS = 1_000;
+const MAX_DATA_AGE_DAYS = 7;
 
-const INDEX_ROWS_PER_DAY = 1000;
-const STOCK_ROWS_PER_DAY = 5000;
-const DISCOVERY_ROWS = 100;
-const DEFAULT_TIMEOUT_MS = 8000;
-const STRONG_GAIN_THRESHOLD = 3;
-const TARGET_MARKETS = new Set(["KOSPI", "KOSDAQ"]);
-
-const INDEX_CARD_SPECS = [
-  { code: "KOSPI", name: "KOSPI", idxCsf: "KOSPI시리즈", idxNm: "코스피" },
-  { code: "KOSDAQ", name: "KOSDAQ", idxCsf: "KOSDAQ시리즈", idxNm: "코스닥" },
+export const SECTOR_INDEX_MAPPING = [
+  { name: "반도체", indexName: "KRX 반도체" },
+  { name: "자동차", indexName: "KRX 자동차" },
+  { name: "은행", indexName: "KRX 은행" },
+  { name: "증권", indexName: "KRX 증권" },
+  { name: "건설", indexName: "KRX 건설" },
+  { name: "철강", indexName: "KRX 철강" },
+  { name: "운송", indexName: "KRX 운송" },
+  { name: "방송통신", indexName: "KRX 방송통신" },
+  { name: "조선", indexName: null },
+  { name: "게임", indexName: null },
+  { name: "2차전지", indexName: null },
+  { name: "화장품", indexName: null },
 ];
 
-// 화면에서 합의한 12개 업종은 모두 이 목록에 남긴다. source가 null인 항목은
-// 지수시세정보에 정확히 대응하는 업종 지수가 없어 화면 칸만 렌더링하지 않는다.
-export const SECTOR_SPECS = [
-  { name: "반도체", source: { idxCsf: "KRX시리즈", idxNm: "KRX 반도체" } },
-  { name: "자동차", source: { idxCsf: "KRX시리즈", idxNm: "KRX 자동차" } },
-  { name: "은행", source: { idxCsf: "KRX시리즈", idxNm: "KRX 은행" } },
-  { name: "증권", source: { idxCsf: "KRX시리즈", idxNm: "KRX 증권" } },
-  { name: "건설", source: { idxCsf: "KRX시리즈", idxNm: "KRX 건설" } },
-  { name: "철강", source: { idxCsf: "KRX시리즈", idxNm: "KRX 철강" } },
-  { name: "운송", source: { idxCsf: "KRX시리즈", idxNm: "KRX 운송" } },
-  { name: "방송통신", source: { idxCsf: "KRX시리즈", idxNm: "KRX 방송통신" } },
-  { name: "조선", source: null, unavailableReason: "정확한 업종 지수 없이 TOP10 테마 지수만 제공" },
-  { name: "게임", source: null, unavailableReason: "정확한 업종 지수 없이 TOP 10 테마 지수만 제공" },
-  { name: "2차전지", source: null, unavailableReason: "정확한 업종 지수 없이 TOP 10·K-AI 테마 지수만 제공" },
-  { name: "화장품", source: null, unavailableReason: "정확히 대응하는 업종 지수를 제공하지 않음" },
-];
-
-function toArray(value) {
-  if (!value) return [];
-  return Array.isArray(value) ? value : [value];
-}
-
-function readResponse(json, sourceName) {
-  const header = json?.response?.header;
-  if (header?.resultCode !== "00") {
-    throw new Error(
-      `${sourceName} 응답 오류: ${header?.resultCode ?? "UNKNOWN"} ${header?.resultMsg ?? ""}`.trim()
-    );
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null;
   }
-
-  const body = json?.response?.body;
-  return {
-    items: toArray(body?.items?.item),
-    totalCount: Number(body?.totalCount ?? 0),
-  };
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
-function requireItems(items, sourceName) {
-  if (items.length === 0) {
-    throw new Error(`${sourceName} 빈 응답`);
-  }
+function latestDate(items) {
+  return items.reduce((latest, item) => {
+    const date = String(item?.basDt ?? "");
+    return date > latest ? date : latest;
+  }, "");
 }
 
-function getLatestBasDt(items, sourceName) {
-  requireItems(items, sourceName);
-  const basDt = items.reduce(
-    (latest, item) => (String(item?.basDt ?? "") > latest ? String(item.basDt) : latest),
-    ""
-  );
-
-  if (!/^\d{8}$/.test(basDt)) {
-    throw new Error(`${sourceName} 기준일 누락`);
-  }
-
-  return basDt;
-}
-
-async function withTimeout(promise, timeoutMs, sourceName) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${sourceName} 응답 시간 초과`)), timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function fetchItems(fetchJson, endpoint, params, sourceName, timeoutMs) {
-  const request = Promise.resolve().then(() =>
-    fetchJson(endpoint, params, {
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(timeoutMs),
-    })
-  );
-  const json = await withTimeout(request, timeoutMs, sourceName);
-  return readResponse(json, sourceName);
-}
-
-async function fetchLatestItems(fetchJson, endpoint, sourceName, rowsPerDay, timeoutMs) {
-  const discovery = await fetchItems(
-    fetchJson,
-    endpoint,
-    { numOfRows: DISCOVERY_ROWS, pageNo: 1, resultType: "json" },
-    `${sourceName} 최신일 탐색`,
-    timeoutMs
-  );
-  const basDt = getLatestBasDt(discovery.items, `${sourceName} 최신일 탐색`);
-  const latest = await fetchItems(
-    fetchJson,
-    endpoint,
-    { numOfRows: rowsPerDay, pageNo: 1, resultType: "json", basDt },
-    sourceName,
-    timeoutMs
-  );
-  requireItems(latest.items, sourceName);
-
-  if (latest.totalCount > latest.items.length) {
-    throw new Error(`${sourceName} 일부 페이지만 수집됨`);
-  }
-
-  return {
-    basDt,
-    items: latest.items.filter((item) => item?.basDt === basDt),
-  };
-}
-
-function parseNumber(value, fieldName) {
-  if (value === undefined || value === null || value === "") {
-    throw new Error(`${fieldName} 누락`);
-  }
-
-  const parsed = Number(String(value).replaceAll(",", ""));
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`${fieldName} 숫자 형식 오류`);
-  }
-
-  return parsed;
-}
-
-function findExactIndex(items, target) {
-  return items.find(
-    (item) => item?.idxCsf === target.idxCsf && item?.idxNm === target.idxNm
+function koreaCalendarDay(date) {
+  const koreaTime = new Date(date.getTime() + 9 * 60 * 60 * 1_000);
+  return Date.UTC(
+    koreaTime.getUTCFullYear(),
+    koreaTime.getUTCMonth(),
+    koreaTime.getUTCDate(),
   );
 }
 
-function buildIndices(indexItems) {
-  return INDEX_CARD_SPECS.map((spec) => {
-    const item = findExactIndex(indexItems, spec);
-    if (!item) throw new Error(`${spec.name} 지수 누락`);
-
-    return {
-      code: spec.code,
-      name: spec.name,
-      value: parseNumber(item.clpr, `${spec.name} 종가`),
-      change: parseNumber(item.vs, `${spec.name} 대비`),
-      changePercent: parseNumber(item.fltRt, `${spec.name} 등락률`),
-    };
-  });
+function marketCalendarDay(basDt) {
+  if (!/^\d{8}$/.test(basDt)) return Number.NaN;
+  return Date.UTC(
+    Number(basDt.slice(0, 4)),
+    Number(basDt.slice(4, 6)) - 1,
+    Number(basDt.slice(6, 8)),
+  );
 }
 
-function buildSectors(indexItems) {
-  const sectors = SECTOR_SPECS.flatMap((spec) => {
-    if (!spec.source) return [];
-    const item = findExactIndex(indexItems, spec.source);
-    if (!item) throw new Error(`${spec.name} 업종 지수 누락`);
+export function isMarketDataStale(basDt, now = new Date()) {
+  const ageInDays =
+    (koreaCalendarDay(now) - marketCalendarDay(basDt)) / (24 * 60 * 60 * 1_000);
+  return !Number.isFinite(ageInDays) || ageInDays < 0 || ageInDays > MAX_DATA_AGE_DAYS;
+}
 
-    return [{
-      name: spec.name,
-      sourceIndexName: spec.source.idxNm,
-      changePercent: parseNumber(item.fltRt, `${spec.name} 업종 등락률`),
-    }];
-  });
+function formatMarketDate(basDt) {
+  return `${basDt.slice(0, 4)}.${basDt.slice(4, 6)}.${basDt.slice(6, 8)} 종가`;
+}
 
-  if (sectors.length !== SECTOR_SPECS.filter((spec) => spec.source).length) {
-    throw new Error("업종 지수 응답 불완전");
+function formatSupabaseDate(tradeDate) {
+  return `${tradeDate.replaceAll("-", ".")} 종가`;
+}
+
+function findIndex(items, name, category) {
+  const item = items.find(
+    (candidate) => candidate.idxNm === name && candidate.idxCsf === category,
+  );
+  const value = toFiniteNumber(item?.clpr);
+  const change = toFiniteNumber(item?.vs);
+  const changePercent = toFiniteNumber(item?.fltRt);
+
+  if (!item || value === null || change === null || changePercent === null) {
+    throw new Error(`${name} 지수 응답이 비어 있거나 올바르지 않습니다.`);
   }
 
-  return sectors;
-}
-
-function normalizeStocks(stockItems) {
-  const stocks = stockItems.flatMap((item) => {
-    if (!TARGET_MARKETS.has(item?.mrktCtg) || !item?.itmsNm || !item?.srtnCd) return [];
-
-    try {
-      return [{
-        code: String(item.srtnCd),
-        market: item.mrktCtg,
-        name: item.itmsNm,
-        price: parseNumber(item.clpr, `${item.itmsNm} 종가`),
-        changePercent: parseNumber(item.fltRt, `${item.itmsNm} 등락률`),
-        turnover: parseNumber(item.trPrc, `${item.itmsNm} 거래대금`),
-      }];
-    } catch {
-      return [];
-    }
-  });
-
-  requireItems(stocks, "주식시세정보");
-  return stocks;
-}
-
-function buildMarketBreadth(stocks) {
-  return {
-    totalStocks: stocks.length,
-    stocksUpThreePercent: stocks.filter(
-      (stock) => stock.changePercent >= STRONG_GAIN_THRESHOLD
-    ).length,
-  };
-}
-
-function rank(stocks, compare) {
-  return [...stocks].sort(compare).slice(0, 5);
+  return { value, change, changePercent };
 }
 
 function buildRankings(stocks) {
-  const rankings = {
-    gainers: rank(stocks, (a, b) => b.changePercent - a.changePercent),
-    losers: rank(stocks, (a, b) => a.changePercent - b.changePercent),
-    turnover: rank(stocks, (a, b) => b.turnover - a.turnover),
-  };
+  const rows = stocks
+    .map((stock) => ({
+      name: String(stock.itmsNm ?? "").trim(),
+      price: toFiniteNumber(stock.clpr),
+      changePercent: toFiniteNumber(stock.fltRt),
+      turnoverInWon: toFiniteNumber(stock.trPrc),
+    }))
+    .filter(
+      (row) =>
+        row.name &&
+        row.price !== null &&
+        row.changePercent !== null &&
+        row.turnoverInWon !== null,
+    );
 
-  if (Object.values(rankings).some((rows) => rows.length < 5)) {
-    throw new Error("종목 순위 데이터 부족");
+  const toRow = ({ name, price, changePercent, turnoverInWon }) => ({
+    name,
+    price,
+    changePercent,
+    turnover: turnoverInWon / 100_000_000,
+  });
+  const byName = (a, b) => a.name.localeCompare(b.name, "ko");
+
+  const gainers = rows
+    .filter((row) => row.changePercent > 0)
+    .sort((a, b) => b.changePercent - a.changePercent || byName(a, b))
+    .slice(0, RANKING_SIZE)
+    .map(toRow);
+  const losers = rows
+    .filter((row) => row.changePercent < 0)
+    .sort((a, b) => a.changePercent - b.changePercent || byName(a, b))
+    .slice(0, RANKING_SIZE)
+    .map(toRow);
+  const turnover = rows
+    .sort((a, b) => b.turnoverInWon - a.turnoverInWon || byName(a, b))
+    .slice(0, RANKING_SIZE)
+    .map(toRow);
+
+  if (
+    gainers.length < RANKING_SIZE ||
+    losers.length < RANKING_SIZE ||
+    turnover.length < RANKING_SIZE
+  ) {
+    throw new Error("종목 순위를 완성할 만큼 주식시세 응답이 충분하지 않습니다.");
   }
 
-  return rankings;
+  return { gainers, losers, turnover };
 }
 
-function buildAvailableRankings(stocks) {
+function buildStocks(stocks) {
+  const stockByCode = new Map();
+
+  stocks.forEach((stock) => {
+    const name = String(stock.itmsNm ?? "").trim();
+    const code = String(stock.srtnCd ?? stock.isinCd ?? name).trim();
+    const price = toFiniteNumber(stock.clpr);
+    const changePercent = toFiniteNumber(stock.fltRt);
+
+    if (!name || !code || price === null || changePercent === null) return;
+
+    stockByCode.set(code, { code, name, price, changePercent });
+  });
+
+  return [...stockByCode.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, "ko"),
+  );
+}
+
+export function buildMarketSnapshot({
+  stockItems,
+  indexItems,
+  now = new Date(),
+  minimumStockRows = MINIMUM_COMPLETE_STOCK_ROWS,
+}) {
+  const stockDate = latestDate(stockItems);
+  const indexDate = latestDate(indexItems);
+
+  if (!stockDate || !indexDate) {
+    throw new Error("공공데이터포털 응답이 비어 있습니다.");
+  }
+  if (stockDate !== indexDate) {
+    throw new Error("주식시세와 지수시세의 최신 기준일이 일치하지 않습니다.");
+  }
+  if (isMarketDataStale(stockDate, now)) {
+    throw new Error("공공데이터포털의 최신 데이터가 허용 범위보다 오래됐습니다.");
+  }
+
+  const stocks = stockItems.filter(
+    (item) => item.basDt === stockDate && MARKET_CATEGORIES.has(item.mrktCtg),
+  );
+  const indices = indexItems.filter((item) => item.basDt === indexDate);
+
+  if (stocks.length < minimumStockRows) {
+    throw new Error("최신 거래일의 주식시세 응답이 불완전합니다.");
+  }
+
+  const breadthStocks = stocks.filter(
+    (stock) => toFiniteNumber(stock.fltRt) !== null,
+  );
+  if (!breadthStocks.length) {
+    throw new Error("시장 열기를 계산할 종목 등락률이 없습니다.");
+  }
+
+  const sectors = SECTOR_INDEX_MAPPING.map(({ name, indexName }) => {
+    if (!indexName) {
+      return { name, changePercent: null, available: false };
+    }
+
+    const index = findIndex(indices, indexName, "KRX시리즈");
+    return {
+      name,
+      changePercent: index.changePercent,
+      available: true,
+      sourceIndexName: indexName,
+    };
+  });
+
   return {
-    gainers: rank(stocks, (a, b) => b.changePercent - a.changePercent),
-    losers: rank(stocks, (a, b) => a.changePercent - b.changePercent),
-    turnover: rank(stocks, (a, b) => b.turnover - a.turnover),
-  };
-}
-
-function formatDate(value) {
-  return `${value.slice(0, 4)}.${value.slice(4, 6)}.${value.slice(6, 8)}`;
-}
-
-function formatIsoDate(value) {
-  return value.replaceAll("-", ".");
-}
-
-function formatAsOf(indexBasDt, stockBasDt) {
-  if (indexBasDt === stockBasDt) return formatDate(indexBasDt);
-  return `지수 ${formatDate(indexBasDt)} · 종목 ${formatDate(stockBasDt)}`;
-}
-
-export function buildMarketSnapshot({ indexBasDt, stockBasDt, indexItems, stockItems }) {
-  const stocks = normalizeStocks(stockItems);
-
-  return {
-    asOf: formatAsOf(indexBasDt, stockBasDt),
+    asOf: formatMarketDate(stockDate),
+    dataDate: stockDate,
     isMock: false,
     source: "public-api",
-    sourceDates: { indices: indexBasDt, stocks: stockBasDt },
-    dataNotice: "공공데이터포털 금융위원회 일별 시세 · 영업일 다음 날 오후 갱신",
-    indices: buildIndices(indexItems),
-    stocks,
-    marketBreadth: buildMarketBreadth(stocks),
-    sectors: buildSectors(indexItems),
+    dataNotice: "금융위원회 공공데이터포털의 최근 공개 시세",
+    indices: [
+      {
+        code: "KOSPI",
+        name: "KOSPI",
+        ...findIndex(indices, "코스피", "KOSPI시리즈"),
+      },
+      {
+        code: "KOSDAQ",
+        name: "KOSDAQ",
+        ...findIndex(indices, "코스닥", "KOSDAQ시리즈"),
+      },
+    ],
+    marketBreadth: {
+      totalStocks: breadthStocks.length,
+      stocksUpThreePercent: breadthStocks.filter(
+        (stock) => toFiniteNumber(stock.fltRt) >= 3,
+      ).length,
+    },
+    sectors,
+    stocks: buildStocks(stocks),
     rankings: buildRankings(stocks),
   };
 }
 
-function getFallbackSnapshot(reason = "") {
-  const stocks = Array.from(
-    new Map(
-      Object.values(exampleMarketSnapshot.rankings)
-        .flat()
-        .map((stock) => [stock.code, stock])
-    ).values()
-  );
-
-  return {
-    ...exampleMarketSnapshot,
-    stocks,
-    source: "example",
-    fallbackReason: reason,
-    dataNotice: reason
-      ? `${exampleMarketSnapshot.dataNotice} (${reason})`
-      : exampleMarketSnapshot.dataNotice,
-  };
-}
-
 function parseSupabaseNumber(value, fieldName) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) throw new Error(`Supabase ${fieldName} 숫자 형식 오류`);
-  return parsed;
+  if (value === null || value === undefined || String(value).trim() === "") {
+    throw new Error(`Supabase ${fieldName} 값이 없습니다.`);
+  }
+
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`Supabase ${fieldName} 숫자 형식이 올바르지 않습니다.`);
+  }
+
+  return number;
 }
 
-export function buildSupabaseMarketSnapshot({ priceDate, rows }) {
+export function buildSupabaseMarketSnapshot({ tradeDate, rows }) {
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new Error("Supabase 최신 기준일의 시세 데이터가 없습니다.");
   }
 
-  const stocks = rows.map((row) => {
-    if (row.price_date !== priceDate) throw new Error("Supabase 기준일이 섞여 있습니다.");
-    if (!row.stock_code || !row.stock_name) throw new Error("Supabase 종목 정보가 누락됐습니다.");
+  const stockItems = rows.map((row) => {
+    if (row.trade_date !== tradeDate) {
+      throw new Error("Supabase 기준일이 섞여 있습니다.");
+    }
+    if (!row.stock_code || !row.stock_name) {
+      throw new Error("Supabase 종목 정보가 누락됐습니다.");
+    }
 
     return {
-      code: String(row.stock_code),
-      market: "국내",
-      name: String(row.stock_name),
-      price: parseSupabaseNumber(row.closing_price, `${row.stock_name} 종가`),
-      changePercent: parseSupabaseNumber(row.change_rate, `${row.stock_name} 등락률`),
-      turnover: parseSupabaseNumber(row.trading_value, `${row.stock_name} 거래대금`),
+      basDt: tradeDate.replaceAll("-", ""),
+      srtnCd: String(row.stock_code),
+      itmsNm: String(row.stock_name),
+      clpr: parseSupabaseNumber(row.close_price, `${row.stock_name} 종가`),
+      fltRt: parseSupabaseNumber(row.change_rate, `${row.stock_name} 등락률`),
+      trPrc: parseSupabaseNumber(row.trading_value, `${row.stock_name} 거래대금`),
     };
   });
+  const stocks = buildStocks(stockItems);
 
   return {
-    asOf: formatIsoDate(priceDate),
-    isMock: false,
-    source: "supabase",
-    sourceDates: { stocks: priceDate },
-    dataNotice: "Supabase에 저장된 최신 일별 시세",
-    indices: [],
+    asOf: formatSupabaseDate(tradeDate),
+    dataDate: tradeDate,
     stocks,
-    marketBreadth: buildMarketBreadth(stocks),
-    sectors: [],
-    rankings: buildAvailableRankings(stocks),
+    rankings: buildRankings(stockItems),
   };
-}
-
-export async function getMarketSnapshot({
-  fetchJson = fetchDataGoKrJson,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-} = {}) {
-  try {
-    const [indices, stocks] = await Promise.all([
-      fetchLatestItems(
-        fetchJson,
-        INDEX_ENDPOINT,
-        "지수시세정보",
-        INDEX_ROWS_PER_DAY,
-        timeoutMs
-      ),
-      fetchLatestItems(
-        fetchJson,
-        STOCK_ENDPOINT,
-        "주식시세정보",
-        STOCK_ROWS_PER_DAY,
-        timeoutMs
-      ),
-    ]);
-
-    return buildMarketSnapshot({
-      indexBasDt: indices.basDt,
-      stockBasDt: stocks.basDt,
-      indexItems: indices.items,
-      stockItems: stocks.items,
-    });
-  } catch (error) {
-    return getFallbackSnapshot(error instanceof Error ? error.message : "알 수 없는 수집 오류");
-  }
 }
 
 function errorMessage(error, fallback) {
   return error instanceof Error ? error.message : fallback;
 }
 
-export async function getDashboardSnapshot({
-  fetchSupabase = fetchLatestDailyStockPrices,
-  fetchJson = fetchDataGoKrJson,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
+function getFallbackSnapshot(reason) {
+  return {
+    ...mockMarketSnapshot,
+    source: "example",
+    fallbackReason: reason,
+    dataNotice: reason
+      ? `외부 데이터 조회에 실패해 예시 데이터를 표시합니다. (${reason})`
+      : "외부 데이터 조회에 실패해 예시 데이터를 표시합니다.",
+  };
+}
+
+function combineSupabaseStocksWithMarketData(
+  supabaseSnapshot,
+  publicApiSnapshot,
+) {
+  const usesExampleMarketData = publicApiSnapshot.isMock;
+
+  return {
+    ...publicApiSnapshot,
+    asOf: supabaseSnapshot.asOf,
+    dataDate: supabaseSnapshot.dataDate,
+    isMock: false,
+    hasExampleData: usesExampleMarketData,
+    source: usesExampleMarketData
+      ? "supabase+example"
+      : "supabase+public-api",
+    dataNotice: usesExampleMarketData
+      ? `종목 시세는 Supabase, 시장 지표는 공공데이터 조회 실패로 예시를 표시합니다. (${publicApiSnapshot.fallbackReason})`
+      : `종목 시세는 Supabase, 지수·시장 열기·업종은 공공데이터를 사용합니다. (시장 지표 ${publicApiSnapshot.asOf})`,
+    stocks: supabaseSnapshot.stocks,
+    rankings: supabaseSnapshot.rankings,
+  };
+}
+
+export async function getMarketSnapshot({
+  fetchItems = fetchDataGoKrItems,
+  now = new Date(),
+  minimumStockRows = MINIMUM_COMPLETE_STOCK_ROWS,
+  onFallback = (error) => console.error("실데이터 수집 실패, 예시 데이터 사용:", error.message),
 } = {}) {
+  try {
+    const [stockItems, indexItems] = await Promise.all([
+      fetchItems(STOCK_PRICE_PATH, { pageNo: 1, numOfRows: 4_000 }),
+      fetchItems(MARKET_INDEX_PATH, { pageNo: 1, numOfRows: 1_000 }),
+    ]);
+
+    return buildMarketSnapshot({
+      stockItems,
+      indexItems,
+      now,
+      minimumStockRows,
+    });
+  } catch (error) {
+    onFallback(error);
+    return getFallbackSnapshot(
+      errorMessage(error, "공공데이터포털 알 수 없는 조회 오류"),
+    );
+  }
+}
+
+export async function getDashboardSnapshot({
+  fetchSupabase = fetchLatestDailyQuotes,
+  fetchItems = fetchDataGoKrItems,
+  now = new Date(),
+  minimumStockRows = MINIMUM_COMPLETE_STOCK_ROWS,
+  onFallback = (error) => console.error("데이터 조회 실패:", error.message),
+} = {}) {
+  let supabaseSnapshot;
   let supabaseFailureReason;
 
   try {
-    const latestPrices = await fetchSupabase({ timeoutMs });
-    return buildSupabaseMarketSnapshot(latestPrices);
+    const latestQuotes = await fetchSupabase();
+    supabaseSnapshot = buildSupabaseMarketSnapshot(latestQuotes);
   } catch (error) {
-    supabaseFailureReason = errorMessage(error, "Supabase 알 수 없는 조회 오류");
+    supabaseFailureReason = errorMessage(
+      error,
+      "Supabase 알 수 없는 조회 오류",
+    );
   }
 
-  const publicApiSnapshot = await getMarketSnapshot({ fetchJson, timeoutMs });
+  const publicApiSnapshot = await getMarketSnapshot({
+    fetchItems,
+    now,
+    minimumStockRows,
+    onFallback,
+  });
+
+  if (supabaseSnapshot) {
+    return combineSupabaseStocksWithMarketData(
+      supabaseSnapshot,
+      publicApiSnapshot,
+    );
+  }
+
   if (!publicApiSnapshot.isMock) {
     return {
       ...publicApiSnapshot,
@@ -391,7 +390,9 @@ export async function getDashboardSnapshot({
     };
   }
 
-  const publicApiFailureReason = publicApiSnapshot.fallbackReason || "공공데이터 알 수 없는 조회 오류";
+  const publicApiFailureReason =
+    publicApiSnapshot.fallbackReason ?? "공공데이터포털 알 수 없는 조회 오류";
+
   return {
     ...publicApiSnapshot,
     dataNotice: [

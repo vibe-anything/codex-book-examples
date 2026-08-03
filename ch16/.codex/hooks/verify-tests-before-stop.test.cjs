@@ -13,11 +13,11 @@ function createProject() {
   fs.mkdirSync(path.join(projectRoot, "lib"), { recursive: true });
   fs.writeFileSync(
     path.join(projectRoot, "components", "Dashboard.js"),
-    "export function Dashboard() { return null; }\n"
+    "export function Dashboard() { return null; }\n",
   );
   fs.writeFileSync(
     path.join(projectRoot, "lib", "calculate.js"),
-    "export const calculate = (value) => value;\n"
+    "export const calculate = (value) => value;\n",
   );
   return projectRoot;
 }
@@ -69,7 +69,7 @@ test("계산 로직 변경 후 npm test 실행 기록이 있으면 종료를 허
       tool_name: "Bash",
       tool_input: { command: "npm test" },
     }),
-    projectRoot
+    projectRoot,
   );
 
   assert.deepEqual(handleEvent(input("Stop"), projectRoot), { continue: true });
@@ -86,7 +86,7 @@ test("npm run test도 테스트 실행 기록으로 인정한다", (t) => {
       tool_name: "Bash",
       tool_input: { cmd: "npm run test" },
     }),
-    projectRoot
+    projectRoot,
   );
 
   assert.deepEqual(handleEvent(input("Stop"), projectRoot), { continue: true });
@@ -102,7 +102,7 @@ test("이미 한 번 이어 간 같은 턴에서는 다시 묻지 않는다", (t
   assert.equal(handleEvent(input("Stop"), projectRoot).decision, "block");
   assert.deepEqual(
     handleEvent(input("Stop", { stop_hook_active: true }), projectRoot),
-    { continue: true }
+    { continue: true },
   );
   assert.equal(fs.existsSync(stateFilePath(projectRoot, input("Stop"))), false);
 });
