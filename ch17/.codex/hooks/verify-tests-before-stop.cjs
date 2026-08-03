@@ -42,7 +42,7 @@ function stateFilePath(projectRoot, input) {
     ".codex",
     "state",
     "test-guard",
-    `${sessionId}-${turnId}.json`
+    `${sessionId}-${turnId}.json`,
   );
 }
 
@@ -91,7 +91,9 @@ function snapshotLogicFiles(projectRoot) {
 
 function changedLogicFiles(before, after) {
   const paths = new Set([...Object.keys(before), ...Object.keys(after)]);
-  return [...paths].filter((filePath) => before[filePath] !== after[filePath]).sort();
+  return [...paths]
+    .filter((filePath) => before[filePath] !== after[filePath])
+    .sort();
 }
 
 function readState(filePath) {
@@ -132,7 +134,7 @@ function allow() {
 function handleUserPromptSubmit(input, projectRoot) {
   const filePath = stateFilePath(projectRoot, input);
 
-  // Stop 훅이 만든 자동 연속 프롬프트가 같은 turn_id로 들어와도 기준점을 덮어쓰지 않는다.
+  // 훅이 이어 간 같은 턴의 기준점은 덮어쓰지 않는다.
   if (!fs.existsSync(filePath)) writeState(filePath, createState(input, projectRoot));
   return allow();
 }
@@ -156,7 +158,7 @@ function handlePostToolUse(input, projectRoot) {
 function handleStop(input, projectRoot) {
   const filePath = stateFilePath(projectRoot, input);
 
-  // Codex가 이 Stop 훅의 요청으로 이미 한 번 이어 간 턴이면 다시 묻지 않는다.
+  // 이미 한 번 되물은 같은 턴은 통과시켜 무한 반복을 막는다.
   if (input.stop_hook_active === true) {
     removeState(filePath);
     return allow();
@@ -167,7 +169,7 @@ function handleStop(input, projectRoot) {
 
   const changedFiles = changedLogicFiles(
     state.baseline,
-    snapshotLogicFiles(projectRoot)
+    snapshotLogicFiles(projectRoot),
   );
 
   if (changedFiles.length === 0 || state.npmTestRuns.length > 0) {
@@ -211,7 +213,7 @@ function main() {
       JSON.stringify({
         continue: true,
         systemMessage: `테스트 확인 훅을 실행하지 못했습니다: ${error.message}`,
-      })
+      }),
     );
   }
 }

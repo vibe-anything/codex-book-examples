@@ -27,6 +27,6 @@ test("등락 값과 색상 클래스를 명시적으로 포맷한다", () => {
 });
 
 test("거래대금을 억원과 조원 단위로 축약한다", () => {
-  assert.equal(formatTurnover(684_000_000_000), "6,840억원");
-  assert.equal(formatTurnover(1_482_000_000_000), "1.5조원");
+  assert.equal(formatTurnover(6840), "6,840억원");
+  assert.equal(formatTurnover(14820), "1.5조원");
 });
