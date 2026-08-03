@@ -1,279 +1,247 @@
 #!/usr/bin/env python3
-"""Git 추적 파일과 이력의 비밀 흔적을 값 노출 없이 검사한다."""
+"""Git 추적 파일과 도달 가능한 이력에서 비밀 후보를 값 노출 없이 찾는다."""
 
 from __future__ import annotations
 
-import os
+import argparse
+from pathlib import Path
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
-from pathlib import Path
 
 
-MAX_TEXT_BLOB_BYTES = 5 * 1024 * 1024
-ALLOWED_ENV_FILES = {".env.sample", ".env.example", ".env.template"}
+MAX_BLOB_BYTES = 2 * 1024 * 1024
+ENV_BASENAME = "." + "env"
+ALLOWED_ENV_SUFFIXES = {"example", "sample", "template", "dist", "defaults"}
 
-TOKEN_RULES = (
-    ("개인 키", re.compile(r"-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-----")),
-    ("AWS 액세스 키", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
-    ("GitHub 토큰", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{30,255}|github_pat_[A-Za-z0-9_]{40,255})\b")),
-    ("Slack 토큰", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
-    ("Stripe 비밀 키", re.compile(r"\bsk_(?:live|test)_[A-Za-z0-9]{16,}\b")),
-    ("OpenAI API 키", re.compile(r"\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b")),
-    ("Anthropic API 키", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}\b")),
-    ("Google API 키", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
-    ("npm 토큰", re.compile(r"\bnpm_[A-Za-z0-9]{20,}\b")),
-    ("Vercel Blob 토큰", re.compile(r"\bvercel_blob_rw_[A-Za-z0-9_-]{20,}\b")),
-    ("JWT", re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b")),
-    ("자격 증명 포함 DB URL", re.compile(r"\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?)://[^\s:/]+:[^\s@/]+@")),
+HIGH_CONFIDENCE_RULES = (
+    ("개인 키", re.compile(rb"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----")),
+    ("AWS 접근 키", re.compile(rb"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
+    ("GitHub 토큰", re.compile(rb"\bgh[pousr]_[A-Za-z0-9]{36,255}\b")),
+    ("OpenAI 키", re.compile(rb"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b")),
+    ("Google API 키", re.compile(rb"\bAIza[0-9A-Za-z_-]{35}\b")),
+    ("Slack 토큰", re.compile(rb"\bxox[baprs]-[0-9A-Za-z-]{20,}\b")),
 )
 
-SUSPICIOUS_NAME_RE = re.compile(
-    r"(?i)\b([A-Z0-9_.-]*(?:api[_-]?key|secret|token|password|passwd|private[_-]?key|service[_-]?key)[A-Z0-9_.-]*)\b\s*[:=]\s*(.+)"
+REVIEW_RULES = (
+    (
+        "자격 증명이 포함된 URL",
+        re.compile(rb"(?i)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s/:]+:[^\s/@]{8,}@"),
+    ),
+    (
+        "비밀 이름에 직접 할당된 긴 값",
+        re.compile(
+            rb"(?i)(?:secret|token|password|passwd|api[_-]?key|service[_-]?key|private[_-]?key)"
+            rb"[ \t]*[:=][ \t]*[\"']?([^\s\"'`]{16,})"
+        ),
+    ),
 )
-SAFE_VALUE_RE = re.compile(
-    r"(?i)(?:example|sample|dummy|fake|test|changeme|replace|your[_-]|redacted|not-a-secret|super-secret|secret-key|placeholder)"
+
+PLACEHOLDER_MARKERS = (
+    b"example",
+    b"sample",
+    b"placeholder",
+    b"replace",
+    b"dummy",
+    b"fake",
+    b"test",
+    b"process" + b"." + b"env",
+    b"${",
+    b"<",
 )
-ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,}$")
 
 
-@dataclass(frozen=True)
-class Finding:
-    kind: str
-    path: str
-    source: str
-    line: int | None = None
-
-
-def git(*args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(
-        ["git", *args],
-        check=check,
+def git(repo: Path, *args: str, input_bytes: bytes | None = None) -> bytes:
+    result = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        input=input_bytes,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        check=False,
     )
+    if result.returncode != 0:
+        message = result.stderr.decode("utf-8", "replace").strip()
+        raise RuntimeError(message or f"git {' '.join(args)} 실패")
+    return result.stdout
 
 
-def forbidden_env_path(path: str) -> bool:
+def is_sensitive_env_path(path: str) -> bool:
     name = Path(path).name.lower()
-    return (name == ".env" or name.startswith(".env.")) and name not in ALLOWED_ENV_FILES
-
-
-def extract_literal(raw_value: str) -> str:
-    value = raw_value.strip().rstrip(",;")
-    if not value:
-        return ""
-    if value[0] in {'"', "'", "`"}:
-        quote = value[0]
-        end = value.find(quote, 1)
-        return value[1:end] if end >= 1 else value[1:]
-    return value.split("#", 1)[0].strip().split()[0] if value.split() else ""
-
-
-def literal_looks_safe(value: str) -> bool:
-    if len(value) < 12:
+    if name == ENV_BASENAME:
         return True
-    if ENV_NAME_RE.fullmatch(value):
-        return True
-    if SAFE_VALUE_RE.search(value):
-        return True
-    references = ("process.env", "import.meta.env", "os.getenv", "getenv(", "${", "env[")
-    return any(reference in value for reference in references)
+    prefix = f"{ENV_BASENAME}."
+    if not name.startswith(prefix):
+        return False
+    suffix = name.removeprefix(prefix)
+    return suffix not in ALLOWED_ENV_SUFFIXES
 
 
-def scan_text(text: str, path: str, source: str) -> list[Finding]:
-    findings: list[Finding] = []
-    code_suffixes = {".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"}
-    for line_number, line in enumerate(text.splitlines(), 1):
-        matched_rule = False
-        for rule_name, pattern in TOKEN_RULES:
-            if pattern.search(line):
-                findings.append(Finding(rule_name, path, source, line_number))
-                matched_rule = True
-        if matched_rule:
-            continue
-
-        assignment = SUSPICIOUS_NAME_RE.search(line)
-        if not assignment:
-            continue
-        raw_value = assignment.group(2).lstrip()
-        if Path(path).suffix.lower() in code_suffixes and raw_value[:1] not in {'"', "'", "`"}:
-            continue
-        value = extract_literal(raw_value)
-        if value and not literal_looks_safe(value):
-            findings.append(Finding("비밀 의심 리터럴", path, source, line_number))
-    return findings
+def is_binary(content: bytes) -> bool:
+    return b"\0" in content[:8192]
 
 
-def read_blob(oid: str) -> tuple[bytes | None, str | None]:
-    try:
-        object_type = git("cat-file", "-t", oid).stdout.decode().strip()
-        if object_type != "blob":
-            return None, None
-        size = int(git("cat-file", "-s", oid).stdout.decode().strip())
-        if size > MAX_TEXT_BLOB_BYTES:
-            return None, f"큰 blob 미검사: {oid[:12]} ({size} bytes)"
-        return git("cat-file", "-p", oid).stdout, None
-    except (subprocess.CalledProcessError, UnicodeDecodeError, ValueError) as error:
-        return None, f"blob 읽기 실패: {oid[:12]} ({type(error).__name__})"
+def scan_content(content: bytes) -> tuple[set[str], set[str]]:
+    high: set[str] = set()
+    review: set[str] = set()
+
+    for name, pattern in HIGH_CONFIDENCE_RULES:
+        if pattern.search(content):
+            high.add(name)
+
+    for name, pattern in REVIEW_RULES:
+        for match in pattern.finditer(content):
+            candidate = match.group(match.lastindex or 0).lower()
+            if any(marker in candidate for marker in PLACEHOLDER_MARKERS):
+                continue
+            review.add(name)
+            break
+
+    return high, review
 
 
-def decode_text(data: bytes) -> str | None:
-    if b"\0" in data:
-        return None
-    try:
-        return data.decode("utf-8")
-    except UnicodeDecodeError:
-        return None
+def tracked_paths(repo: Path) -> list[str]:
+    output = git(repo, "ls-files", "-z")
+    return [part.decode("utf-8", "surrogateescape") for part in output.split(b"\0") if part]
+
+
+def historical_env_paths(repo: Path) -> set[str]:
+    output = git(repo, "log", "--all", "--name-only", "--format=", "-z")
+    paths = {
+        part.decode("utf-8", "surrogateescape").strip("\n")
+        for part in output.split(b"\0")
+        if part.strip(b"\n")
+    }
+    return {path for path in paths if is_sensitive_env_path(path)}
+
+
+def historical_blobs(repo: Path) -> list[tuple[str, str, int]]:
+    objects = git(repo, "rev-list", "--objects", "--all").decode("utf-8", "surrogateescape")
+    object_paths: dict[str, str] = {}
+    for line in objects.splitlines():
+        object_id, separator, path = line.partition(" ")
+        if separator and object_id not in object_paths:
+            object_paths[object_id] = path
+
+    if not object_paths:
+        return []
+
+    request = "".join(f"{object_id}\n" for object_id in object_paths).encode()
+    checks = git(
+        repo,
+        "cat-file",
+        "--batch-check=%(objectname) %(objecttype) %(objectsize)",
+        input_bytes=request,
+    ).decode("ascii", "replace")
+
+    blobs: list[tuple[str, str, int]] = []
+    for line in checks.splitlines():
+        parts = line.split()
+        if len(parts) == 3 and parts[1] == "blob" and parts[2].isdigit():
+            blobs.append((parts[0], object_paths[parts[0]], int(parts[2])))
+    return blobs
+
+
+def historical_commit_messages(repo: Path) -> list[tuple[str, bytes]]:
+    output = git(repo, "log", "--all", "--format=%H%x00%B%x00")
+    parts = output.split(b"\0")
+    messages: list[tuple[str, bytes]] = []
+    for index in range(0, len(parts) - 1, 2):
+        commit_id = parts[index].strip().decode("ascii", "replace")
+        message = parts[index + 1]
+        if commit_id:
+            messages.append((commit_id, message))
+    return messages
+
+
+def add_findings(
+    findings: set[tuple[str, str, str]],
+    scope: str,
+    path: str,
+    names: set[str],
+) -> None:
+    for name in names:
+        findings.add((scope, path, name))
 
 
 def main() -> int:
-    try:
-        root = git("rev-parse", "--show-toplevel").stdout.decode().strip()
-        os.chdir(root)
-    except (subprocess.CalledProcessError, UnicodeDecodeError):
-        print("Git 비밀 검사: WARNING")
-        print("확인 범위: Git 저장소 루트를 확인하지 못함")
-        return 2
+    parser = argparse.ArgumentParser(description="Git 비밀 노출을 읽기 전용으로 검사합니다.")
+    parser.add_argument("--repo", default=".", help="검사할 Git 저장소 경로")
+    args = parser.parse_args()
+    repo = Path(args.repo).resolve()
 
-    findings: set[Finding] = set()
-    warnings: list[str] = []
-    scanned_worktree = 0
-    scanned_blobs = 0
-    scanned_commit_messages = 0
-    binary_blobs = 0
+    blocked: set[tuple[str, str, str]] = set()
+    review: set[tuple[str, str, str]] = set()
+    skipped: set[tuple[str, str]] = set()
 
     try:
-        tracked_paths = [
-            item.decode("utf-8", "surrogateescape")
-            for item in git("ls-files", "-z").stdout.split(b"\0")
-            if item
-        ]
-        for path in tracked_paths:
-            if forbidden_env_path(path):
-                findings.add(Finding("금지된 .env 파일", path, "현재 추적 파일"))
-                continue
-            file_path = Path(path)
-            if not file_path.is_file() or file_path.is_symlink():
-                continue
-            if file_path.stat().st_size > MAX_TEXT_BLOB_BYTES:
-                warnings.append(f"큰 추적 파일 미검사: {path}")
-                continue
-            data = file_path.read_bytes()
-            text = decode_text(data)
-            if text is None:
-                continue
-            scanned_worktree += 1
-            findings.update(scan_text(text, path, "현재 추적 파일"))
+        root = Path(git(repo, "rev-parse", "--show-toplevel").decode().strip()).resolve()
+        paths = tracked_paths(root)
 
-        object_paths: dict[str, set[str]] = {}
-        history = git("rev-list", "--objects", "--all", check=False)
-        if history.returncode != 0:
-            warnings.append("도달 가능한 Git 커밋 이력을 읽지 못함")
-        else:
-            for raw_line in history.stdout.splitlines():
-                decoded = raw_line.decode("utf-8", "surrogateescape")
-                oid, separator, path = decoded.partition(" ")
-                if separator and path:
-                    object_paths.setdefault(oid, set()).add(path)
+        for path in paths:
+            if is_sensitive_env_path(path):
+                blocked.add(("현재", path, "추적 중인 환경 파일"))
+                continue
 
-        commit_log = git("log", "--all", "--format=%H%x00%B%x1e", check=False)
-        if commit_log.returncode != 0:
-            warnings.append("Git 커밋 메시지를 읽지 못함")
-        else:
-            for raw_record in commit_log.stdout.split(b"\x1e"):
-                raw_record = raw_record.strip()
-                if not raw_record:
+            file_path = root / path
+            try:
+                size = file_path.stat().st_size
+                if size > MAX_BLOB_BYTES:
+                    skipped.add(("현재", path))
                     continue
-                raw_oid, separator, raw_message = raw_record.partition(b"\0")
-                if not separator:
-                    warnings.append("Git 커밋 메시지 형식을 해석하지 못함")
-                    continue
-                message = decode_text(raw_message)
-                if message is None:
-                    warnings.append(f"커밋 메시지 디코딩 실패: {raw_oid[:12].decode(errors='replace')}")
-                    continue
-                commit_oid = raw_oid.decode("ascii", "replace")
-                scanned_commit_messages += 1
-                findings.update(
-                    scan_text(message, "<커밋 메시지>", f"커밋 {commit_oid[:12]}")
-                )
-
-        index_entries = git("ls-files", "--stage", "-z").stdout.split(b"\0")
-        for raw_entry in index_entries:
-            if not raw_entry:
+                content = file_path.read_bytes()
+            except (OSError, ValueError):
+                skipped.add(("현재", path))
                 continue
-            metadata, separator, raw_path = raw_entry.partition(b"\t")
-            fields = metadata.split()
-            if not separator or len(fields) < 3 or fields[2] != b"0":
-                continue
-            oid = fields[1].decode()
-            path = raw_path.decode("utf-8", "surrogateescape")
-            object_paths.setdefault(oid, set()).add(path)
 
-        for oid, paths in object_paths.items():
-            for path in paths:
-                if forbidden_env_path(path):
-                    findings.add(Finding("금지된 .env 파일", path, f"Git blob {oid[:12]}"))
-
-            allowed_paths = [path for path in paths if not forbidden_env_path(path)]
-            if not allowed_paths:
+            if is_binary(content):
+                skipped.add(("현재", path))
                 continue
-            data, warning = read_blob(oid)
-            if warning:
-                warnings.append(warning)
-                continue
-            if data is None:
-                continue
-            text = decode_text(data)
-            if text is None:
-                binary_blobs += 1
-                continue
-            scanned_blobs += 1
-            for path in allowed_paths:
-                findings.update(scan_text(text, path, f"Git blob {oid[:12]}"))
+            high, candidates = scan_content(content)
+            add_findings(blocked, "현재", path, high)
+            add_findings(review, "현재", path, candidates)
 
-        shallow = git("rev-parse", "--is-shallow-repository").stdout.decode().strip()
-        if shallow == "true":
-            warnings.append("얕은 clone이라 원격의 전체 커밋 이력을 증명할 수 없음")
-        if binary_blobs > 0:
-            warnings.append(f"바이너리 또는 비 UTF-8 blob {binary_blobs}개의 내용 미검사")
-    except (OSError, subprocess.CalledProcessError, UnicodeDecodeError) as error:
-        warnings.append(f"검사 중 읽기 오류: {type(error).__name__}")
+        for path in historical_env_paths(root):
+            blocked.add(("이력", path, "커밋 이력의 환경 파일"))
 
-    ordered_findings = sorted(
-        findings,
-        key=lambda item: (item.path, item.source, item.line or 0, item.kind),
-    )
-    if ordered_findings:
-        status = "BLOCKED"
-        exit_code = 1
-    elif warnings:
-        status = "WARNING"
-        exit_code = 2
-    else:
-        status = "PASS"
-        exit_code = 0
+        for object_id, path, size in historical_blobs(root):
+            if is_sensitive_env_path(path):
+                continue
+            if size > MAX_BLOB_BYTES:
+                skipped.add(("이력", path))
+                continue
+            content = git(root, "cat-file", "blob", object_id)
+            if is_binary(content):
+                skipped.add(("이력", path))
+                continue
+            high, candidates = scan_content(content)
+            add_findings(blocked, "이력", path, high)
+            add_findings(review, "이력", path, candidates)
 
-    print(f"Git 비밀 검사: {status}")
-    print(
-        "확인 범위: "
-        f"현재 추적 텍스트 {scanned_worktree}개, Git 텍스트 blob {scanned_blobs}개, "
-        f"커밋 메시지 {scanned_commit_messages}개, 바이너리 blob {binary_blobs}개"
-    )
-    print(f"발견 건수: {len(ordered_findings)}")
-    for finding in ordered_findings[:50]:
-        line = str(finding.line) if finding.line is not None else "-"
-        print(
-            f"- {finding.kind} | 경로={finding.path} | 위치={finding.source} | 줄={line}"
-        )
-    if len(ordered_findings) > 50:
-        print(f"- 추가 발견 {len(ordered_findings) - 50}건은 값 노출 방지를 위해 생략")
-    for warning in sorted(set(warnings)):
-        print(f"주의: {warning}")
-    return exit_code
+        for commit_id, message in historical_commit_messages(root):
+            high, candidates = scan_content(message)
+            location = f"커밋 메시지 {commit_id[:12]}"
+            add_findings(blocked, "이력", location, high)
+            add_findings(review, "이력", location, candidates)
+    except RuntimeError as error:
+        print("검사 상태: WARNING")
+        print(f"검사 실패: {error}")
+        return 1
+
+    status = "BLOCKED" if blocked else "WARNING" if review or skipped else "PASS"
+    print(f"검사 상태: {status}")
+    print(f"차단 발견: {len(blocked)}건")
+    print(f"수동 검토 후보: {len(review)}건")
+    print(f"검사 생략: {len(skipped)}건")
+
+    for scope, path, rule in sorted(blocked):
+        print(f"차단: [{scope}] {path} ({rule})")
+    for scope, path, rule in sorted(review):
+        print(f"검토: [{scope}] {path} ({rule}, 값은 표시하지 않음)")
+    for scope, path in sorted(skipped):
+        print(f"생략: [{scope}] {path} (바이너리 또는 2 MiB 초과)")
+
+    return 2 if blocked else 1 if review or skipped else 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

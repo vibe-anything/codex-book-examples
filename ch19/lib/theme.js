@@ -1,30 +1,31 @@
-export const THEME_STORAGE_KEY = "korea-market-dashboard-theme";
-export const DEFAULT_THEME_PREFERENCE = "system";
+export const THEME_STORAGE_KEY = "market-dashboard-theme";
 
-const THEME_PREFERENCES = new Set(["system", "light", "dark"]);
+export const THEMES = ["light", "dark"];
 
-export function normalizeThemePreference(value) {
-  return THEME_PREFERENCES.has(value) ? value : DEFAULT_THEME_PREFERENCE;
+export function isTheme(value) {
+  return THEMES.includes(value);
 }
 
-export function resolveTheme(preference, prefersDark) {
-  const normalizedPreference = normalizeThemePreference(preference);
-  if (normalizedPreference === "light" || normalizedPreference === "dark") {
-    return normalizedPreference;
-  }
-
+export function resolveTheme(storedTheme, prefersDark = false) {
+  if (isTheme(storedTheme)) return storedTheme;
   return prefersDark ? "dark" : "light";
 }
 
 export const themeInitializationScript = `(() => {
-  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const storageKey = ${JSON.stringify(THEME_STORAGE_KEY)};
+  let storedTheme = null;
+
   try {
-    const saved = window.localStorage.getItem("${THEME_STORAGE_KEY}");
-    const preference = ["system", "light", "dark"].includes(saved) ? saved : "system";
-    document.documentElement.dataset.theme = preference === "system"
-      ? (media.matches ? "dark" : "light")
-      : preference;
+    storedTheme = window.localStorage.getItem(storageKey);
   } catch {
-    document.documentElement.dataset.theme = media.matches ? "dark" : "light";
+    // 저장소가 차단된 경우에도 시스템 화면 설정을 따른다.
   }
+
+  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+  const theme = storedTheme === "light" || storedTheme === "dark"
+    ? storedTheme
+    : prefersDark ? "dark" : "light";
+
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
 })();`;

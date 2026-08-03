@@ -1,4 +1,5 @@
 import "./globals.css";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { themeInitializationScript } from "@/lib/theme";
 
 export const metadata = {
@@ -12,7 +13,14 @@ export default function RootLayout({ children }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <header className="site-toolbar">
+          <div className="site-toolbar-inner">
+            <ThemeToggle />
+          </div>
+        </header>
+        {children}
+      </body>
     </html>
   );
 }
