@@ -1,6 +1,6 @@
 import "./globals.css";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { THEME_INIT_SCRIPT } from "@/components/theme";
+import { themeInitializationScript } from "@/lib/theme";
 
 export const metadata = {
   title: "오늘의 국내 시장",
@@ -11,13 +11,14 @@ export default function RootLayout({ children }) {
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
-          id="theme-init"
-        />
+        <script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
       </head>
       <body>
-        <ThemeToggle />
+        <header className="site-toolbar">
+          <div className="site-toolbar-inner">
+            <ThemeToggle />
+          </div>
+        </header>
         {children}
       </body>
     </html>

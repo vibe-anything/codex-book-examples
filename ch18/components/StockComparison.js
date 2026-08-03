@@ -2,165 +2,155 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { changeTone, formatPrice } from "@/lib/market";
+import { formatPrice } from "@/lib/market";
 import {
-  STOCK_COMPARE_STORAGE_KEY,
-  formatComparisonRate,
-  getComparableStocks,
-  normalizeComparisonCodes,
-  selectComparisonCode,
-} from "@/lib/stockCompare";
+  COMPARISON_STORAGE_KEY,
+  describeStockChange,
+  getDefaultComparisonCodes,
+  restoreComparisonCodes,
+  updateComparisonCodes,
+} from "@/lib/stockComparison";
 import styles from "./StockComparison.module.css";
-
-const SIDES = [
-  { key: "left", label: "첫 번째 종목" },
-  { key: "right", label: "두 번째 종목" },
-];
 
 function readStoredCodes(stocks) {
   try {
-    return normalizeComparisonCodes(
-      JSON.parse(window.localStorage.getItem(STOCK_COMPARE_STORAGE_KEY)),
-      stocks
+    const storedValue = JSON.parse(
+      window.localStorage.getItem(COMPARISON_STORAGE_KEY) ?? "null",
     );
+    return restoreComparisonCodes(stocks, storedValue);
   } catch {
-    return normalizeComparisonCodes([], stocks);
+    return getDefaultComparisonCodes(stocks);
   }
 }
 
-export function StockComparison({ snapshot }) {
-  const stocks = useMemo(() => getComparableStocks(snapshot), [snapshot]);
-  const [selectedCodes, setSelectedCodes] = useState(() => normalizeComparisonCodes([], stocks));
-  const [storageReady, setStorageReady] = useState(false);
-  const [selectionError, setSelectionError] = useState("");
-  const [conflictSide, setConflictSide] = useState("");
-
-  const stockByCode = useMemo(
-    () => new Map(stocks.map((stock) => [stock.code, stock])),
-    [stocks]
+export function StockComparison({ stocks, asOf, dataNotice }) {
+  const [selectedCodes, setSelectedCodes] = useState(() =>
+    getDefaultComparisonCodes(stocks),
   );
-  const selectedStocks = selectedCodes
-    .map((code) => stockByCode.get(code))
-    .filter(Boolean);
+  const [selectionError, setSelectionError] = useState("");
+  const [isStorageReady, setIsStorageReady] = useState(false);
+  const stockByCode = useMemo(
+    () => new Map(stocks.map((stock) => [String(stock.code), stock])),
+    [stocks],
+  );
 
   useEffect(() => {
     setSelectedCodes(readStoredCodes(stocks));
-    setStorageReady(true);
+    setIsStorageReady(true);
   }, [stocks]);
 
   useEffect(() => {
-    if (!storageReady || selectedCodes.length !== 2) return;
+    if (!isStorageReady || selectedCodes.length !== 2) return;
 
     try {
       window.localStorage.setItem(
-        STOCK_COMPARE_STORAGE_KEY,
-        JSON.stringify(selectedCodes)
+        COMPARISON_STORAGE_KEY,
+        JSON.stringify(selectedCodes),
       );
     } catch {
-      // 저장 공간을 사용할 수 없어도 현재 비교 상태는 유지한다.
+      // 저장소가 제한된 환경에서도 현재 비교 기능은 유지한다.
     }
-  }, [selectedCodes, storageReady]);
+  }, [isStorageReady, selectedCodes]);
 
-  function changeStock(side, nextCode) {
-    const result = selectComparisonCode(selectedCodes, side, nextCode, stocks);
-
-    if (result.error) {
-      setSelectionError(result.error);
-      setConflictSide(side);
-      return;
-    }
-
+  function selectStock(slot, nextCode) {
+    const result = updateComparisonCodes(
+      stocks,
+      selectedCodes,
+      slot,
+      nextCode,
+    );
     setSelectedCodes(result.codes);
-    setSelectionError("");
-    setConflictSide("");
+    setSelectionError(result.error);
   }
+
+  const selectedStocks = selectedCodes
+    .map((code) => stockByCode.get(code))
+    .filter(Boolean);
 
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>오늘의 국내 시장</p>
-          <h1>종목 비교</h1>
-          <p className={styles.introduction}>현재가와 오늘 등락률을 같은 기준으로 비교해 보세요.</p>
+          <p className={styles.eyebrow}>{asOf} 기준</p>
+          <h1 className={styles.title}>종목 비교</h1>
+          <p className={styles.description}>
+            두 종목의 현재가와 오늘 등락률을 한눈에 비교하세요.
+          </p>
         </div>
-        <Link className={styles.homeLink} href="/">홈으로 돌아가기</Link>
+        <Link className={styles.backLink} href="/">
+          시장 홈으로
+        </Link>
       </header>
 
-      {stocks.length >= 2 ? (
+      {stocks.length < 2 ? (
+        <section className={styles.empty} aria-labelledby="comparison-empty-title">
+          <h2 id="comparison-empty-title">비교할 종목이 부족합니다</h2>
+          <p>서로 다른 종목이 두 개 이상 준비되면 비교할 수 있습니다.</p>
+        </section>
+      ) : (
         <>
-          <section className={styles.controls} aria-labelledby="comparison-options-title">
-            <h2 id="comparison-options-title" className={styles.visuallyHidden}>비교할 두 종목 선택</h2>
-            <div className={styles.controlGrid}>
-              {SIDES.map(({ key, label }, index) => {
-                const hasError = conflictSide === key;
-
-                return (
-                  <label className={styles.selectLabel} key={key}>
-                    <span>{label}</span>
-                    <select
-                      value={selectedCodes[index] ?? ""}
-                      onChange={(event) => changeStock(key, event.target.value)}
-                      aria-invalid={hasError || undefined}
-                      aria-describedby={hasError ? "comparison-selection-error" : undefined}
-                    >
-                      {stocks.map((stock) => (
-                        <option value={stock.code} key={stock.code}>
-                          {stock.name} ({stock.code})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                );
-              })}
+          <section className={styles.panel} aria-label="비교할 종목 선택">
+            <div className={styles.selectors}>
+              {[0, 1].map((slot) => (
+                <label className={styles.selector} key={slot}>
+                  {slot === 0 ? "첫 번째 종목" : "두 번째 종목"}
+                  <select
+                    value={selectedCodes[slot] ?? ""}
+                    onChange={(event) => selectStock(slot, event.target.value)}
+                    aria-describedby="comparison-selection-message"
+                  >
+                    {stocks.map((stock) => (
+                      <option value={stock.code} key={stock.code}>
+                        {stock.name} ({stock.code})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
             </div>
+            <p className={styles.storageNote}>
+              선택한 두 종목은 이 브라우저에 저장됩니다.
+            </p>
             <p
-              id="comparison-selection-error"
-              className={`${styles.selectionMessage} ${selectionError ? styles.visible : ""}`}
+              className={styles.error}
+              id="comparison-selection-message"
               role={selectionError ? "alert" : undefined}
+              aria-live="polite"
             >
-              {selectionError || "서로 다른 종목을 선택해 주세요."}
+              {selectionError}
             </p>
           </section>
 
-          <section className={styles.cardGrid} aria-label="선택한 종목 비교 결과">
+          <section className={styles.cards} aria-label="종목 비교 결과">
             {selectedStocks.map((stock) => {
-              const tone = changeTone(stock.changePercent);
+              const change = describeStockChange(stock.changePercent);
 
               return (
                 <article className={styles.card} key={stock.code}>
-                  <div className={styles.stockIdentity}>
+                  <div className={styles.cardHeading}>
                     <h2>{stock.name}</h2>
-                    <p>{stock.market} · {stock.code}</p>
+                    <p className={styles.code}>{stock.code}</p>
                   </div>
-                  <dl className={styles.quoteList}>
-                    <div>
-                      <dt>현재가</dt>
-                      <dd>{formatPrice(stock.price)}</dd>
-                    </div>
-                    <div>
-                      <dt>오늘 등락률</dt>
-                      <dd
-                        className={`${styles.rate} ${styles[tone]}`}
-                        data-tone={tone}
-                      >
-                        {formatComparisonRate(stock.changePercent)}
-                      </dd>
-                    </div>
-                  </dl>
+                  <p className={styles.priceLabel}>현재가</p>
+                  <p className={styles.price}>{formatPrice(stock.price)}</p>
+                  <div className={styles.changeRow}>
+                    <span className={styles.changeLabel}>오늘 등락률</span>
+                    <span
+                      className={`${styles.change} ${styles[change.tone]}`}
+                      aria-label={`${stock.name} 오늘 등락률 ${change.accessibleText}`}
+                    >
+                      <span>{change.label}</span>
+                      <span>{change.signedPercent}</span>
+                    </span>
+                  </div>
                 </article>
               );
             })}
           </section>
         </>
-      ) : (
-        <section className={styles.empty} role="status">
-          비교할 종목 데이터가 부족합니다. 홈에서 데이터 상태를 확인해 주세요.
-        </section>
       )}
 
-      <footer className={styles.footer}>
-        {snapshot.asOf} 기준 · {snapshot.isMock ? "예시 데이터" : "최신 일별 시세"}
-      </footer>
+      <p className={styles.dataNote}>{dataNotice}</p>
     </main>
   );
 }

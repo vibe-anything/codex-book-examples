@@ -1,20 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  nextTheme,
-  normalizeTheme,
-  resolveTheme,
-  THEME_STORAGE_KEY,
-} from "./theme";
+import { isTheme, resolveTheme, THEME_STORAGE_KEY } from "@/lib/theme";
 
-function systemPrefersDark() {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
+const DARK_MODE_QUERY = "(prefers-color-scheme: dark)";
 
-function readSavedTheme() {
+function readStoredTheme() {
   try {
-    return normalizeTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return isTheme(storedTheme) ? storedTheme : null;
   } catch {
     return null;
   }
@@ -29,73 +23,67 @@ export function ThemeToggle() {
   const [theme, setTheme] = useState(null);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const initialTheme = normalizeTheme(document.documentElement.dataset.theme)
-      ?? resolveTheme(readSavedTheme(), mediaQuery.matches);
+    const systemPreference = window.matchMedia(DARK_MODE_QUERY);
 
-    applyTheme(initialTheme);
-    setTheme(initialTheme);
-
-    function handleSystemTheme(event) {
-      if (readSavedTheme()) return;
-      const systemTheme = resolveTheme(null, event.matches);
-      applyTheme(systemTheme);
-      setTheme(systemTheme);
+    function renderTheme(nextTheme) {
+      applyTheme(nextTheme);
+      setTheme(nextTheme);
     }
 
-    function handleStoredTheme(event) {
-      if (event.key !== THEME_STORAGE_KEY) return;
-      const storedTheme = normalizeTheme(event.newValue);
-      const syncedTheme = resolveTheme(storedTheme, mediaQuery.matches);
-      applyTheme(syncedTheme);
-      setTheme(syncedTheme);
+    function syncStoredOrSystemTheme() {
+      renderTheme(resolveTheme(readStoredTheme(), systemPreference.matches));
     }
 
-    mediaQuery.addEventListener("change", handleSystemTheme);
-    window.addEventListener("storage", handleStoredTheme);
+    function handleSystemChange(event) {
+      if (!readStoredTheme()) renderTheme(resolveTheme(null, event.matches));
+    }
+
+    function handleStorageChange(event) {
+      if (event.key === THEME_STORAGE_KEY) syncStoredOrSystemTheme();
+    }
+
+    syncStoredOrSystemTheme();
+    systemPreference.addEventListener("change", handleSystemChange);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
-      mediaQuery.removeEventListener("change", handleSystemTheme);
-      window.removeEventListener("storage", handleStoredTheme);
+      systemPreference.removeEventListener("change", handleSystemChange);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
 
-  function handleToggle() {
-    const currentTheme = theme
-      ?? resolveTheme(
-        normalizeTheme(document.documentElement.dataset.theme),
-        systemPrefersDark()
-      );
-    const selectedTheme = nextTheme(currentTheme);
-
+  function chooseTheme(nextTheme) {
     try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, selectedTheme);
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
     } catch {
-      // 저장 공간을 사용할 수 없어도 현재 탭의 테마 전환은 유지한다.
+      // 저장소가 제한되어도 현재 탭의 화면 모드는 바꿀 수 있다.
     }
 
-    applyTheme(selectedTheme);
-    setTheme(selectedTheme);
+    applyTheme(nextTheme);
+    setTheme(nextTheme);
   }
 
-  const isDark = theme === "dark";
-  const label = theme
-    ? `${isDark ? "라이트" : "다크"} 모드로 전환`
-    : "화면 모드 전환";
-
   return (
-    <div className="theme-control">
+    <div className="theme-toggle" role="group" aria-label="화면 모드">
       <button
-        aria-label={label}
-        aria-pressed={isDark}
-        className="theme-toggle"
-        onClick={handleToggle}
         type="button"
+        className="theme-toggle-option"
+        onClick={() => chooseTheme("light")}
+        aria-label="라이트 모드 사용"
+        aria-pressed={theme === "light"}
       >
-        <span aria-hidden="true" className="theme-toggle-icon">
-          {isDark ? "☾" : "☀"}
-        </span>
-        <span>{theme ? `${isDark ? "다크" : "라이트"} 모드` : "화면 모드"}</span>
+        <span aria-hidden="true">☀︎</span>
+        <span>라이트</span>
+      </button>
+      <button
+        type="button"
+        className="theme-toggle-option"
+        onClick={() => chooseTheme("dark")}
+        aria-label="다크 모드 사용"
+        aria-pressed={theme === "dark"}
+      >
+        <span aria-hidden="true">◐</span>
+        <span>다크</span>
       </button>
     </div>
   );
