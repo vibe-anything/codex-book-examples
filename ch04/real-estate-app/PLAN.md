@@ -1,7 +1,7 @@
 • Proposed Plan
 
 
-  # 부동산 실거래가 조회 웹앱
+  # 아파트 실거래가 조회 웹앱
 
   ## Summary
 
