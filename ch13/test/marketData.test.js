@@ -58,7 +58,14 @@ function makeIndexItems(basDt = DATA_DATE) {
     }),
   );
 
+  const previousMarketIndices = marketIndices.map((item) => ({
+    ...item,
+    basDt: "20260729",
+    clpr: String(Number(item.clpr) - 10),
+  }));
+
   return [
+    ...previousMarketIndices,
     ...marketIndices,
     ...sectors,
     {
@@ -94,7 +101,7 @@ test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
   assert.equal(snapshot.isMock, false);
   assert.equal(snapshot.asOf, "2026.07.30 종가");
   assert.deepEqual(snapshot.indices.map(({ code }) => code), ["KOSPI", "KOSDAQ"]);
-  assert.equal("intraday" in snapshot.indices[0], false);
+  assert.deepEqual(snapshot.indices[0].recentCloses, [5583.56, 5593.56]);
   assert.deepEqual(snapshot.marketBreadth, {
     totalStocks: 12,
     stocksUpThreePercent: 6,
@@ -125,6 +132,20 @@ test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
   ]);
   assert.equal(snapshot.sectors.filter(({ available }) => available).length, 8);
   assert.equal(snapshot.sectors.find(({ name }) => name === "게임").changePercent, null);
+});
+
+test("지수 응답에 거래일이 하나뿐이면 미니 차트 칸만 비운다", () => {
+  const snapshot = buildMarketSnapshot({
+    stockItems: makeStockItems(),
+    indexItems: makeIndexItems().filter((item) => item.basDt === DATA_DATE),
+    now: NOW,
+    minimumStockRows: 10,
+  });
+
+  assert.equal(snapshot.isMock, false);
+  assert.equal(snapshot.indices[0].value, 5593.56);
+  assert.equal(snapshot.indices[0].recentCloses, null);
+  assert.equal(snapshot.indices[1].recentCloses, null);
 });
 
 test("API 호출 실패 시 예시 데이터로 돌아간다", async () => {

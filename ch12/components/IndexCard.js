@@ -15,10 +15,10 @@ export function IndexCard({ index }) {
         </p>
       </div>
       <Sparkline
-        values={index.intraday}
+        values={index.recentCloses}
         tone={tone}
         indexCode={index.code}
-        label={`${index.name} 최근 종가 흐름`}
+        label={`${index.name} 최근 종가 흐름, ${tone === "up" ? "상승" : tone === "down" ? "하락" : "보합"}`}
       />
     </article>
   );

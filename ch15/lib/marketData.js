@@ -14,6 +14,7 @@ const MARKET_CATEGORIES = new Set(["KOSPI", "KOSDAQ"]);
 const RANKING_SIZE = 5;
 const MINIMUM_COMPLETE_STOCK_ROWS = 1_000;
 const MAX_DATA_AGE_DAYS = 7;
+const RECENT_CLOSES_SIZE = 8;
 
 export const SECTOR_INDEX_MAPPING = [
   { name: "반도체", indexName: "KRX 반도체" },
@@ -90,6 +91,28 @@ function findIndex(items, name, category) {
   }
 
   return { value, change, changePercent };
+}
+
+function buildRecentCloses(items, name, category) {
+  const closesByDate = new Map();
+
+  items.forEach((item) => {
+    if (item.idxNm !== name || item.idxCsf !== category) return;
+
+    const value = toFiniteNumber(item.clpr);
+    if (/^\d{8}$/.test(item.basDt) && value !== null) {
+      closesByDate.set(item.basDt, value);
+    }
+  });
+
+  const values = [...closesByDate]
+    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+    .slice(-RECENT_CLOSES_SIZE)
+    .map(([, value]) => value);
+
+  // 두 점이 없으면 선을 그릴 수 없다. 여기서 예외를 던지면 미니 차트 하나 때문에
+  // 화면 전체가 예시 데이터로 떨어지므로, 이 칸만 비우고 나머지는 실데이터로 둔다.
+  return values.length < 2 ? null : values;
 }
 
 function buildRankings(stocks) {
@@ -221,11 +244,13 @@ export function buildMarketSnapshot({
         code: "KOSPI",
         name: "KOSPI",
         ...findIndex(indices, "코스피", "KOSPI시리즈"),
+        recentCloses: buildRecentCloses(indexItems, "코스피", "KOSPI시리즈"),
       },
       {
         code: "KOSDAQ",
         name: "KOSDAQ",
         ...findIndex(indices, "코스닥", "KOSDAQ시리즈"),
+        recentCloses: buildRecentCloses(indexItems, "코스닥", "KOSDAQ시리즈"),
       },
     ],
     marketBreadth: {

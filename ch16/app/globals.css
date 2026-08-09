@@ -397,7 +397,9 @@ h1 {
 
 .index-card {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
   overflow: hidden;
   padding: 20px;
 }
@@ -469,6 +471,34 @@ h1 {
 .index-change.flat .change-badge,
 .rate-badge.flat {
   background: var(--grey-100);
+}
+
+.sparkline {
+  width: min(50%, 232px);
+  height: 64px;
+  overflow: visible;
+}
+
+.sparkline polyline {
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sparkline-area {
+  pointer-events: none;
+}
+
+.sparkline-base {
+  stroke: var(--grey-200);
+  stroke-width: 1;
+}
+
+.sparkline-end {
+  fill: #fff;
+  stroke: currentColor;
+  stroke-width: 2;
 }
 
 .heat-card {
