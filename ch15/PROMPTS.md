@@ -19,9 +19,23 @@ GitHub 저장소·Vercel 프로젝트·환경변수 입력은 **사람 몫**이�
 github.com/forest-lim-dev/korea-market-dashboard). 본문 흐름은 Vercel 대시보드에서
 저장소를 Import하는 것이고, 이 폴더는 Vercel MCP 직접 배포로 같은 결과를 만들었다.
 
+본문에서 푸시를 맡길 때 쓰는 요청문은 다음과 같다.
+
+```text
+이 프로젝트를 GitHub 저장소 https://github.com/<내 계정>/stock-dashboard.git 에 올려줘.
+원격 연결부터 푸시까지 끝나면 무엇을 했는지 알려줘.
+```
+
 ## 3. 첫 배포와 진단 (§15.4~15.5)
 
-환경변수 없이 첫 프로덕션 배포 → 화면에 '예시 데이터' 안내가 남는 증상을 확인한 뒤:
+환경변수 없이 첫 프로덕션 배포 → 화면에 '예시 데이터' 안내가 남는 증상을 확인한다.
+로그를 Codex와 함께 보려면 먼저 Vercel MCP를 등록한다(브라우저 승인 창이 뜬다).
+
+```bash
+codex mcp add vercel --url https://mcp.vercel.com
+```
+
+그다음:
 
 ```text
 방금 Vercel에 배포한 대시보드가 예시 데이터로 돌아.

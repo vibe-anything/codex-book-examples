@@ -4,7 +4,62 @@
 
 이 프로젝트는 아파트 매매 실거래가를 조회하기 위한 서버 API를 제공한다. 브라우저는 공공데이터 API를 직접 호출하지 않고 Next.js 서버 라우트인 `GET /api/transactions`를 호출한다. 공공데이터 인증키는 서버 환경변수 `PUBLIC_DATA_SERVICE_KEY`에서만 읽으므로 클라이언트에 노출되지 않는다.
 
-현재 `lib/transactions.js`는 실제 공공데이터 API 대신 샘플 거래 데이터를 반환한다. 실제 외부 API 호출은 이후 이 모듈의 `fetchTransactions` 함수에서 구현할 수 있다.
+`lib/transactions.js`의 `fetchTransactions`가 국토교통부 아파트 매매 실거래가 API를 직접
+호출한다. 호출이 실패하면 샘플 데이터로 대체하지 않고 오류 상태를 그대로 돌려준다.
+
+## 공공데이터 실거래가 API 호출
+
+서버는 다음 공공데이터포털 API를 호출한다. 인증키는 `.env`의 `PUBLIC_DATA_SERVICE_KEY`에서만
+읽고, 키가 붙은 전체 주소는 화면과 로그에 출력하지 않는다.
+
+```http
+GET https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade
+```
+
+| 요청 변수 | 필수 여부 | 형식 | 설명 |
+| --- | --- | --- | --- |
+| `serviceKey` | 필수 | 문자열 | 공공데이터포털 일반 인증키. `.env`에서 읽는다 |
+| `LAWD_CD` | 필수 | 숫자 5자리 | 법정동코드 10자리 중 앞 5자리. 예: 서울 종로구 `11110` |
+| `DEAL_YMD` | 필수 | `YYYYMM` | 계약년월. 예: `202607` |
+| `pageNo` | 선택 | 1 이상의 정수 | 조회할 페이지 번호 |
+| `numOfRows` | 선택 | 1 이상의 정수 | 한 번에 조회할 행 수 |
+
+응답은 XML이며 거래 한 건이 `<item>` 하나로 온다. 응답에 담긴 오류 코드는
+`resultCode`·`returnReasonCode`로 판별하고, 인증 관련 코드는 `API_AUTH_ERROR`로 구분한다.
+
+문서 출처: <https://www.data.go.kr/data/15126469/openapi.do>
+
+## 응답 필드와 한글 라벨 매핑
+
+상세 화면의 한글 라벨은 앞 문서 페이지의 Swagger UI Model 설명을 근거로 정했다. 원본 키는
+`items[].rawFields`에 그대로 보존하므로, 새 필드가 응답에 추가돼도 원본을 잃지 않는다.
+
+| 원본 키 | 한글 라벨 |
+| --- | --- |
+| `sggCd` | 지역코드 |
+| `umdNm` | 법정동 |
+| `aptNm` | 단지명 |
+| `jibun` | 지번 |
+| `excluUseAr` | 전용면적 |
+| `dealYear` | 계약년도 |
+| `dealMonth` | 계약월 |
+| `dealDay` | 계약일 |
+| `dealAmount` | 거래금액(만원) |
+| `floor` | 층 |
+| `buildYear` | 건축년도 |
+| `rawFields` | 응답 `<item>`의 모든 태그를 `{ key, label, value }`로 보존한 목록. 상세 화면이 사용 |
+| `cdealType` | 해제여부 |
+| `cdealDay` | 해제사유발생일 |
+| `dealingGbn` | 거래유형(중개 및 직거래 여부) |
+| `estateAgentSggNm` | 중개사소재지(시군구 단위) |
+| `rgstDate` | 등기일자 |
+| `aptDong` | 아파트 동명 |
+| `slerGbn` | 거래주체정보_매도자(개인/법인/공공기관/기타) |
+| `buyerGbn` | 거래주체정보_매수자(개인/법인/공공기관/기타) |
+| `landLeaseholdGbn` | 토지임대부 아파트 여부 |
+
+근거: <https://www.data.go.kr/data/15126469/openapi.do#/API%20%EB%AA%A9%EB%A1%9D/getRTMSDataSvcAptTrade>
+의 Swagger UI Models(`body` → `items` → `item`).
 
 ## 요청
 
@@ -56,8 +111,9 @@ GET /api/transactions?regionCode=11680&dealYmd=202401&pageNo=1&numOfRows=10
 | `floor` | 거래된 층 |
 | `dealDate` | 계약일(`YYYY-MM-DD`) |
 | `buildYear` | 건축년도 |
+| `rawFields` | 응답 `<item>`의 모든 태그를 `{ key, label, value }`로 보존한 목록. 상세 화면이 사용 |
 
-현재 샘플 데이터의 `dealAmount`는 쉼표가 포함된 문자열이다. 실제 공공데이터 응답을 연결할 때는 쉼표와 공백을 제거한 뒤 만 원 단위 숫자로 파싱하고, 화면에서 억/만 원 단위로 읽기 좋게 표시해야 한다.
+응답의 `dealAmount`에는 공백과 쉼표가 섞여 온다. 쉼표와 공백을 제거해 만 원 단위 숫자로 파싱하고, 화면에서는 억/만 원 단위로 읽기 좋게 표시한다.
 
 ## 상태값과 오류 응답
 
@@ -68,6 +124,7 @@ GET /api/transactions?regionCode=11680&dealYmd=202401&pageNo=1&numOfRows=10
 | `SUCCESS` | `200` | 조회에 성공했고 거래 내역이 있음 |
 | `EMPTY` | `200` | 조회에는 성공했지만 조건에 맞는 거래가 없음 |
 | `API_KEY_MISSING` | `200` | 서버에 `PUBLIC_DATA_SERVICE_KEY`가 설정되지 않음 |
+| `API_AUTH_ERROR` | `200` | 인증키가 없거나 잘못돼 외부 API가 인증 오류를 돌려줌 |
 | `API_REQUEST_FAILED` | `200` | 외부 API 요청 또는 서버의 조회 작업에 실패함 |
 | `INVALID_INPUT` | `400` | 요청 파라미터 검증에 실패함 |
 
@@ -125,12 +182,7 @@ PUBLIC_DATA_SERVICE_KEY=발급받은_인증키
 
 인증키를 소스 코드, 클라이언트 컴포넌트, 브라우저 로그에 기록하거나 저장소에 커밋하면 안 된다.
 
-현재 샘플 구현에서는 다음 환경변수로 예외 상태를 재현할 수 있다.
-
-| 환경변수 | 값 | 결과 |
-| --- | --- | --- |
-| `MOCK_EMPTY` | `true` | `EMPTY` 응답 반환 |
-| `MOCK_API_FAILURE` | `true` | `API_REQUEST_FAILED` 응답 반환 |
+키를 일부러 틀리게 바꾸면 화면에 오류가 뜨는지로 실제 호출 여부를 확인할 수 있다.
 
 ## 관련 파일
 
