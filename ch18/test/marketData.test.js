@@ -323,5 +323,5 @@ test("Supabase와 기존 API가 모두 실패할 때만 예시 데이터를 안�
   assert.equal(snapshot.isMock, true);
   assert.match(snapshot.dataNotice, /예시 데이터/);
   assert.match(snapshot.dataNotice, /NEXT_PUBLIC_SUPABASE_URL/);
-  assert.match(snapshot.dataNotice, /SELECT 정책/);
+  assert.match(snapshot.dataNotice, /테이블 이름/);
 });

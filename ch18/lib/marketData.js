@@ -415,7 +415,7 @@ export async function getDashboardSnapshot({
     ...publicApiSnapshot,
     dataNotice: [
       "Supabase와 공공데이터 조회에 실패해 예시 데이터를 표시합니다.",
-      `${SUPABASE_URL_ENV}·${SUPABASE_PUBLISHABLE_KEY_ENV} 설정과 SELECT 정책을 확인하세요.`,
+      `${SUPABASE_URL_ENV}·${SUPABASE_PUBLISHABLE_KEY_ENV} 설정과 테이블 이름을 확인하세요.`,
       `(Supabase: ${supabaseFailureReason} / 공공데이터: ${publicApiFailureReason})`,
     ].join(" "),
   };

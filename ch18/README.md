@@ -31,7 +31,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 | --- | --- | --- |
 | `DATA_GO_KR_SERVICE_KEY` | 금융위원회 공공데이터포털 API 인증 | 서버 코드에서만 읽고 브라우저나 소스에 노출하지 않는다. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL | 앱의 읽기 요청에 사용한다. |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key | 공개 클라이언트 키이며 RLS의 `SELECT` 정책과 함께 사용한다. 쓰기 권한을 주지 않는다. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key | 브라우저에 공개되는 클라이언트 키다. 앱은 이 키로 시세를 읽기만 하고, 쓰기 경로는 앱에 두지 않는다. |
 
 Vercel의 Production·Preview·Development 환경에도 이름이 같은 세 변수를 설정한다.
 값은 로컬 문서, Git diff, 로그, AI 대화에 복사하지 않는다.
@@ -62,8 +62,9 @@ codex mcp login supabase
 ```
 
 앱은 `daily_quotes`를 GET으로만 읽는다. 필요한 열은 `trade_date`, `stock_code`,
-`stock_name`, `close_price`, `change_rate`, `trading_value`이며, 익명 방문자에게는 RLS
-`SELECT` 정책만 허용한다. INSERT·UPDATE·DELETE 정책은 만들지 않는다. 자세한 연결
+`stock_name`, `close_price`, `change_rate`, `trading_value`다. 공개된 시세만 담는 학습용
+프로젝트라 RLS는 켜지 않았고, 시세 적재는 앱이 아니라 이 학습용 Supabase MCP로만 한다.
+그래서 MCP 주소에 `&read_only=true`를 붙여 잠가 두고, 적재할 때만 잠시 푼다. 자세한 연결
 옵션은 [Supabase MCP 공식 문서](https://supabase.com/docs/guides/ai-tools/mcp)를 따른다.
 
 ### Vercel 프로젝트와 MCP
@@ -213,8 +214,8 @@ git revert <문제-커밋-SHA>
 npm test
 ```
 
-외부 조회 실패는 먼저 세 환경변수 **이름**, Supabase `daily_quotes`의 최신 행과 RLS
-`SELECT` 정책, 공공데이터 기준일을 확인한다. 키 값은 출력하지 않는다. 원인을 고치는
+외부 조회 실패는 먼저 세 환경변수 **이름**, Supabase `daily_quotes`의 테이블 이름과 최신
+행, 공공데이터 기준일을 확인한다. 키 값은 출력하지 않는다. 원인을 고치는
 동안에도 `예시 데이터` 안내를 삭제하지 않는다.
 
 ### Vercel 프로덕션 롤백
