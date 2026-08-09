@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import RegionAutocomplete from './components/region-autocomplete.jsx';
 
 const STATUS_MESSAGES = {
-  SUCCESS: '조회가 완료되었습니다.',
   EMPTY: '해당 조건의 거래 내역이 없습니다.',
   API_KEY_MISSING: 'API 키가 설정되지 않았습니다. 서버의 .env 파일에 PUBLIC_DATA_SERVICE_KEY를 설정하세요.',
   API_AUTH_ERROR: 'API 인증에 실패했습니다. PUBLIC_DATA_SERVICE_KEY 값과 활용 신청 상태를 확인하세요.',
@@ -123,10 +123,7 @@ export default function HomePage() {
         </div>
 
         <form className="search-form" onSubmit={handleSubmit}>
-          <label>
-            지역명
-            <input name="regionName" defaultValue="서울특별시 강남구" placeholder="예: 서울 강남구" required />
-          </label>
+          <RegionAutocomplete />
           <label>
             계약년월
             <input name="dealYmdMonth" type="month" defaultValue="2024-01" required />
@@ -166,9 +163,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <p className={`status-message${status.isError ? ' error' : ''}`} role="status">
-        {status.message}
-      </p>
+      {status.code !== 'SUCCESS' && (
+        <p className={`status-message${status.isError ? ' error' : ''}`} role="status">
+          {status.message}
+        </p>
+      )}
 
       {hasApiError ? (
         <section className="state-panel error-state" aria-labelledby="api-error-title">

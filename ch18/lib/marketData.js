@@ -16,18 +16,32 @@ const MINIMUM_COMPLETE_STOCK_ROWS = 1_000;
 const MAX_DATA_AGE_DAYS = 7;
 
 export const SECTOR_INDEX_MAPPING = [
-  { name: "반도체", indexName: "KRX 반도체" },
-  { name: "자동차", indexName: "KRX 자동차" },
-  { name: "은행", indexName: "KRX 은행" },
-  { name: "증권", indexName: "KRX 증권" },
-  { name: "건설", indexName: "KRX 건설" },
-  { name: "철강", indexName: "KRX 철강" },
-  { name: "운송", indexName: "KRX 운송" },
-  { name: "방송통신", indexName: "KRX 방송통신" },
-  { name: "조선", indexName: null },
-  { name: "게임", indexName: null },
-  { name: "2차전지", indexName: null },
-  { name: "화장품", indexName: null },
+  { name: "반도체", indexName: "KRX 반도체", indexCategory: "KRX시리즈" },
+  { name: "자동차", indexName: "KRX 자동차", indexCategory: "KRX시리즈" },
+  { name: "은행", indexName: "KRX 은행", indexCategory: "KRX시리즈" },
+  { name: "증권", indexName: "KRX 증권", indexCategory: "KRX시리즈" },
+  { name: "건설", indexName: "KRX 건설", indexCategory: "KRX시리즈" },
+  { name: "철강", indexName: "KRX 철강", indexCategory: "KRX시리즈" },
+  { name: "운송", indexName: "KRX 운송", indexCategory: "KRX시리즈" },
+  { name: "방송통신", indexName: "KRX 방송통신", indexCategory: "KRX시리즈" },
+];
+
+export const THEME_INDEX_MAPPING = [
+  {
+    name: "조선",
+    indexName: "KRX 조선 TOP10 지수",
+    indexCategory: "테마지수",
+  },
+  {
+    name: "게임",
+    indexName: "KRX 게임 TOP 10 지수",
+    indexCategory: "테마지수",
+  },
+  {
+    name: "2차전지",
+    indexName: "KRX 2차전지 TOP 10 지수",
+    indexCategory: "테마지수",
+  },
 ];
 
 function toFiniteNumber(value) {
@@ -196,19 +210,22 @@ export function buildMarketSnapshot({
     throw new Error("시장 열기를 계산할 종목 등락률이 없습니다.");
   }
 
-  const sectors = SECTOR_INDEX_MAPPING.map(({ name, indexName }) => {
-    if (!indexName) {
-      return { name, changePercent: null, available: false };
-    }
-
-    const index = findIndex(indices, indexName, "KRX시리즈");
+  const buildIndexTiles = (mapping) => mapping.map(({
+    name,
+    indexName,
+    indexCategory,
+  }) => {
+    const index = findIndex(indices, indexName, indexCategory);
     return {
       name,
       changePercent: index.changePercent,
       available: true,
       sourceIndexName: indexName,
+      sourceIndexCategory: indexCategory,
     };
   });
+  const sectors = buildIndexTiles(SECTOR_INDEX_MAPPING);
+  const themes = buildIndexTiles(THEME_INDEX_MAPPING);
 
   return {
     asOf: formatMarketDate(stockDate),
@@ -235,6 +252,7 @@ export function buildMarketSnapshot({
       ).length,
     },
     sectors,
+    themes,
     stocks: buildStocks(stocks),
     rankings: buildRankings(stocks),
   };
@@ -317,7 +335,7 @@ function combineSupabaseStocksWithMarketData(
       : "supabase+public-api",
     dataNotice: usesExampleMarketData
       ? `종목 시세는 Supabase, 시장 지표는 공공데이터 조회 실패로 예시를 표시합니다. (${publicApiSnapshot.fallbackReason})`
-      : `종목 시세는 Supabase, 지수·시장 열기·업종은 공공데이터를 사용합니다. (시장 지표 ${publicApiSnapshot.asOf})`,
+      : `종목 시세는 Supabase, 지수·시장 열기·업종·테마는 공공데이터를 사용합니다. (시장 지표 ${publicApiSnapshot.asOf})`,
     stocks: supabaseSnapshot.stocks,
     rankings: supabaseSnapshot.rankings,
   };

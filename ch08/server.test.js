@@ -68,7 +68,24 @@ describe('fetchTransactions', () => {
       'exclusiveArea',
       'floor',
       'dealDate',
-      'buildYear'
+      'buildYear',
+      'rawFields'
+    ]);
+    assert.deepEqual(result.items[0].rawFields, [
+      { key: 'sggCd', label: '지역코드', value: '11680' },
+      { key: 'umdNm', label: '법정동', value: '대치동' },
+      { key: 'aptNm', label: '단지명', value: '은마' },
+      { key: 'jibun', label: '지번', value: '316' },
+      { key: 'excluUseAr', label: '전용면적', value: '76.79' },
+      { key: 'dealYear', label: '계약년도', value: '2024' },
+      { key: 'dealMonth', label: '계약월', value: '1' },
+      { key: 'dealDay', label: '계약일', value: '15' },
+      { key: 'dealAmount', label: '거래금액(만원)', value: '245,000' },
+      { key: 'floor', label: '층', value: '8' },
+      { key: 'buildYear', label: '건축년도', value: '1979' },
+      { key: 'dealingGbn', label: '거래유형(중개 및 직거래 여부)', value: '중개거래' },
+      { key: 'estateAgentSggNm', label: '중개사소재지(시군구 단위)', value: '서울 강남구' },
+      { key: 'rgstDate', label: '등기일자', value: '2024-02-01' }
     ]);
   });
 
@@ -118,7 +135,23 @@ describe('public data API helpers', () => {
       exclusiveArea: '76.79',
       floor: '8',
       dealDate: '2024-01-15',
-      buildYear: '1979'
+      buildYear: '1979',
+      rawFields: [
+        { key: 'sggCd', label: '지역코드', value: '11680' },
+        { key: 'umdNm', label: '법정동', value: '대치동' },
+        { key: 'aptNm', label: '단지명', value: '은마' },
+        { key: 'jibun', label: '지번', value: '316' },
+        { key: 'excluUseAr', label: '전용면적', value: '76.79' },
+        { key: 'dealYear', label: '계약년도', value: '2024' },
+        { key: 'dealMonth', label: '계약월', value: '1' },
+        { key: 'dealDay', label: '계약일', value: '15' },
+        { key: 'dealAmount', label: '거래금액(만원)', value: '245,000' },
+        { key: 'floor', label: '층', value: '8' },
+        { key: 'buildYear', label: '건축년도', value: '1979' },
+        { key: 'dealingGbn', label: '거래유형(중개 및 직거래 여부)', value: '중개거래' },
+        { key: 'estateAgentSggNm', label: '중개사소재지(시군구 단위)', value: '서울 강남구' },
+        { key: 'rgstDate', label: '등기일자', value: '2024-02-01' }
+      ]
     });
   });
 });
@@ -143,6 +176,7 @@ const successXml = `<?xml version="1.0" encoding="UTF-8"?>
         <sggCd>11680</sggCd>
         <umdNm>대치동</umdNm>
         <aptNm>은마</aptNm>
+        <jibun>316</jibun>
         <excluUseAr>76.79</excluUseAr>
         <dealYear>2024</dealYear>
         <dealMonth>1</dealMonth>
@@ -150,6 +184,9 @@ const successXml = `<?xml version="1.0" encoding="UTF-8"?>
         <dealAmount>245,000</dealAmount>
         <floor>8</floor>
         <buildYear>1979</buildYear>
+        <dealingGbn>중개거래</dealingGbn>
+        <estateAgentSggNm>서울 강남구</estateAgentSggNm>
+        <rgstDate>2024-02-01</rgstDate>
       </item>
     </items>
     <totalCount>1</totalCount>

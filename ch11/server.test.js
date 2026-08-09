@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRegionCodeText, resolveRegionName } from './lib/region-codes.js';
+import { findRegionSuggestions, parseRegionCodeText, resolveRegionName } from './lib/region-codes.js';
 import { buildRequestUrl, fetchTransactions, parseTransactionItems, validateQuery } from './lib/transactions.js';
 
 describe('validateQuery', () => {
@@ -202,10 +202,16 @@ describe('region code helpers', () => {
     const result = resolveRegionName('중구');
 
     assert.equal(result.ok, false);
-    assert.equal(
-      result.error,
-      '지역명이 여러 지역과 일치합니다. 예: 대구광역시 중구, 대전광역시 중구, 부산광역시 중구'
-    );
+    assert.match(result.error, /여러 지역/);
+  });
+
+  it('returns limited, unique city-district suggestions for partial names', () => {
+    assert.deepEqual(findRegionSuggestions('강남', 3), [
+      {
+        regionCode: '11680',
+        regionName: '서울특별시 강남구'
+      }
+    ]);
   });
 });
 

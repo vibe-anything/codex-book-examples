@@ -2,6 +2,7 @@ import { IndexCard } from "./IndexCard";
 import { MarketHeat } from "./MarketHeat";
 import { RankingTable } from "./RankingTable";
 import { SectorHeatmap } from "./SectorHeatmap";
+import { Watchlist } from "./Watchlist";
 
 export function MarketDashboard({ snapshot }) {
   return (
@@ -18,6 +19,8 @@ export function MarketDashboard({ snapshot }) {
           <time>{snapshot.asOf} 기준</time>
         </div>
       </header>
+
+      <Watchlist stocks={snapshot.stocks} />
 
       <section className="market-summary" aria-label="시장 지수와 시장 열기">
         {snapshot.indices.map((index) => <IndexCard index={index} key={index.code} />)}

@@ -47,7 +47,7 @@ export function MarketDashboard({ snapshot }) {
         <MarketHeat breadth={snapshot.marketBreadth} />
       </section>
 
-      <SectorHeatmap sectors={snapshot.sectors} />
+      <SectorHeatmap sectors={snapshot.sectors} themes={snapshot.themes} />
 
       <section className="rankings" aria-labelledby="ranking-title">
         <div className="section-heading ranking-heading">

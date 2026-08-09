@@ -1,11 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { parseRegionCodeText, resolveRegionName } from './lib/region-codes.js';
 import { buildRequestUrl, fetchTransactions, parseTransactionItems, validateQuery } from './lib/transactions.js';
 
 describe('validateQuery', () => {
   it('accepts the planned query shape', () => {
     const params = new URLSearchParams({
-      regionCode: '11680',
+      regionName: '서울 강남구',
       dealYmd: '202401',
       pageNo: '1'
     });
@@ -15,6 +16,7 @@ describe('validateQuery', () => {
       errors: [],
       value: {
         regionCode: '11680',
+        regionName: '서울특별시 강남구',
         dealYmd: '202401',
         pageNo: 1,
         numOfRows: 10
@@ -23,7 +25,7 @@ describe('validateQuery', () => {
   });
 
   it('rejects invalid input before API work', () => {
-    const result = validateQuery(new URLSearchParams({ regionCode: 'abc', dealYmd: '2024' }));
+    const result = validateQuery(new URLSearchParams({ regionName: '없는 지역', dealYmd: '2024' }));
 
     assert.equal(result.ok, false);
     assert.equal(result.errors.length, 2);
@@ -33,6 +35,7 @@ describe('validateQuery', () => {
 describe('fetchTransactions', () => {
   const query = {
     regionCode: '11680',
+    regionName: '서울특별시 강남구',
     dealYmd: '202401',
     pageNo: 1,
     numOfRows: 10
@@ -110,6 +113,7 @@ describe('public data API helpers', () => {
     const url = buildRequestUrl(
       {
         regionCode: '11110',
+        regionName: '서울특별시 종로구',
         dealYmd: '201512',
         pageNo: 2,
         numOfRows: 20
@@ -153,6 +157,55 @@ describe('public data API helpers', () => {
         { key: 'rgstDate', label: '등기일자', value: '2024-02-01' }
       ]
     });
+  });
+});
+
+describe('region code helpers', () => {
+  it('parses active legal-dong code rows', () => {
+    const regions = parseRegionCodeText(`법정동코드\t법정동명\t폐지여부
+1168000000\t서울특별시 강남구\t존재
+1168010600\t서울특별시 강남구 대치동\t존재
+1168010700\t서울특별시 강남구 신사동\t폐지`);
+
+    assert.deepEqual(
+      regions.map((region) => ({
+        code: region.code,
+        sggCode: region.sggCode,
+        name: region.name
+      })),
+      [
+        { code: '1168000000', sggCode: '11680', name: '서울특별시 강남구' },
+        { code: '1168010600', sggCode: '11680', name: '서울특별시 강남구 대치동' }
+      ]
+    );
+  });
+
+  it('resolves region names to five-digit public data API codes', () => {
+    assert.deepEqual(resolveRegionName('서울 강남구'), {
+      ok: true,
+      value: {
+        regionCode: '11680',
+        regionName: '서울특별시 강남구'
+      }
+    });
+
+    assert.deepEqual(resolveRegionName('대치동'), {
+      ok: true,
+      value: {
+        regionCode: '11680',
+        regionName: '서울특별시 강남구 대치동'
+      }
+    });
+  });
+
+  it('rejects ambiguous region names', () => {
+    const result = resolveRegionName('중구');
+
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.error,
+      '지역명이 여러 지역과 일치합니다. 예: 대구광역시 중구, 대전광역시 중구, 부산광역시 중구'
+    );
   });
 });
 

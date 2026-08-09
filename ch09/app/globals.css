@@ -52,7 +52,7 @@ h2 {
 
 .search-form {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
 }
@@ -65,7 +65,8 @@ label {
   color: #354150;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 42px;
   border: 1px solid #bdc8d3;
@@ -100,7 +101,7 @@ button:disabled {
 
 .summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin: 16px 0;
 }
@@ -137,6 +138,46 @@ button:disabled {
   border-color: #e3aaa7;
   background: #fff5f4;
   color: #9d2f29;
+}
+
+.state-panel {
+  display: grid;
+  gap: 8px;
+  min-height: 160px;
+  align-content: center;
+  justify-items: center;
+  padding: 32px;
+  border: 1px solid #d9e0e7;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.state-panel h2,
+.state-panel h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.state-panel p {
+  max-width: 520px;
+  color: #5d6875;
+  line-height: 1.5;
+}
+
+.error-state {
+  border-color: #e3aaa7;
+  background: #fff8f7;
+}
+
+.error-state h2 {
+  color: #9d2f29;
+}
+
+.empty-state {
+  margin-top: 14px;
+  background: #f8fafb;
 }
 
 .table-wrap {
@@ -182,6 +223,24 @@ td {
   background: #f3faf8;
 }
 
+.pagination {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  min-width: 780px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e3e9ef;
+}
+
+.pagination span {
+  min-width: 84px;
+  text-align: center;
+  font-weight: 800;
+  color: #354150;
+}
+
 .detail-wrap {
   padding: 20px;
   background: #ffffff;
@@ -204,13 +263,16 @@ td {
 
 .field-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 0;
   border-top: 1px solid #e3e9ef;
+  border-left: 1px solid #e3e9ef;
 }
 
 .field-row {
   display: grid;
   grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+  border-right: 1px solid #e3e9ef;
   border-bottom: 1px solid #e3e9ef;
 }
 
@@ -230,13 +292,6 @@ td {
   background: #f2f5f8;
 }
 
-.field-row dt code {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6e7b89;
-  white-space: normal;
-}
-
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 20px, 1120px);
@@ -251,6 +306,10 @@ td {
   .detail-header,
   .field-row {
     display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .field-list {
     grid-template-columns: 1fr;
   }
 

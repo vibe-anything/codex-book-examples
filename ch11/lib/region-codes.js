@@ -47,7 +47,7 @@ export function resolveRegionName(regionName) {
       ok: false,
       error: `지역명이 여러 지역과 일치합니다. 예: ${sggMatches
         .slice(0, 3)
-        .map((region) => region.regionName)
+        .map((region) => region.name)
         .join(', ')}`
     };
   }
@@ -56,6 +56,41 @@ export function resolveRegionName(regionName) {
     ok: false,
     error: '지역명을 법정동코드 자료에서 찾을 수 없습니다.'
   };
+}
+
+export function findRegionSuggestions(regionName, limit = 8) {
+  const query = normalizeRegionName(regionName);
+  const maxResults = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 20) : 8;
+
+  if (!query) {
+    return [];
+  }
+
+  const suggestions = new Map();
+
+  for (const region of getActiveRegions()) {
+    if (!region.code.endsWith('00000')) {
+      continue;
+    }
+
+    if (!region.searchText.includes(query)) {
+      continue;
+    }
+
+    suggestions.set(region.sggCode, {
+      regionCode: region.sggCode,
+      regionName: region.name
+    });
+  }
+
+  return [...suggestions.values()]
+    .sort((a, b) => {
+      const aIndex = normalizeRegionName(a.regionName).indexOf(query);
+      const bIndex = normalizeRegionName(b.regionName).indexOf(query);
+
+      return aIndex - bIndex || a.regionName.length - b.regionName.length || a.regionName.localeCompare(b.regionName, 'ko-KR');
+    })
+    .slice(0, maxResults);
 }
 
 function getActiveRegions() {

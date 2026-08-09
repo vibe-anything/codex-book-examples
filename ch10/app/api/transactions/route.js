@@ -35,6 +35,7 @@ export async function GET(request) {
         status: 'API_REQUEST_FAILED',
         summary: {
           regionCode: validation.value.regionCode,
+          regionName: validation.value.regionName,
           dealYmd: validation.value.dealYmd,
           count: 0,
           pageNo: validation.value.pageNo,

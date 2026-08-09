@@ -9,7 +9,6 @@ export const marketSnapshot = {
       value: 2846.72,
       change: 24.58,
       changePercent: 0.87,
-      intraday: [2822.1, 2828.4, 2825.7, 2836.2, 2832.9, 2841.5, 2839.4, 2846.72],
     },
     {
       code: "KOSDAQ",
@@ -17,7 +16,6 @@ export const marketSnapshot = {
       value: 792.64,
       change: -3.87,
       changePercent: -0.49,
-      intraday: [796.5, 798.2, 795.4, 797.1, 793.8, 791.9, 794.2, 792.64],
     },
   ],
   marketBreadth: {
@@ -37,6 +35,23 @@ export const marketSnapshot = {
     { name: "게임", changePercent: null, available: false },
     { name: "2차전지", changePercent: null, available: false },
     { name: "화장품", changePercent: null, available: false },
+  ],
+  stocks: [
+    { code: "000001", name: "한빛테크", price: 18420, changePercent: 29.99 },
+    { code: "000002", name: "세림바이오", price: 7350, changePercent: 24.58 },
+    { code: "000003", name: "미래로보틱스", price: 42600, changePercent: 18.33 },
+    { code: "000004", name: "동해에너지", price: 12980, changePercent: 15.89 },
+    { code: "000005", name: "네오소재", price: 25150, changePercent: 13.67 },
+    { code: "000006", name: "코어게임즈", price: 9860, changePercent: -14.92 },
+    { code: "000007", name: "그린셀", price: 21300, changePercent: -11.25 },
+    { code: "000008", name: "온누리제약", price: 16740, changePercent: -9.86 },
+    { code: "000009", name: "에이스모빌리티", price: 5820, changePercent: -8.35 },
+    { code: "000010", name: "스마트콘텐츠", price: 11450, changePercent: -7.92 },
+    { code: "005930", name: "삼성전자", price: 73200, changePercent: 1.81 },
+    { code: "000660", name: "SK하이닉스", price: 226500, changePercent: 3.42 },
+    { code: "005380", name: "현대차", price: 247000, changePercent: 1.23 },
+    { code: "042660", name: "한화오션", price: 41950, changePercent: 4.09 },
+    { code: "373220", name: "LG에너지솔루션", price: 346500, changePercent: -2.39 },
   ],
   rankings: {
     gainers: [

@@ -6,6 +6,7 @@ import {
   getDashboardSnapshot,
   getMarketSnapshot,
   SECTOR_INDEX_MAPPING,
+  THEME_INDEX_MAPPING,
 } from "../lib/marketData.js";
 import {
   MARKET_INDEX_PATH,
@@ -49,11 +50,14 @@ function makeIndexItems(basDt = DATA_DATE) {
       fltRt: "-2.7",
     },
   ];
-  const sectors = SECTOR_INDEX_MAPPING.filter(({ indexName }) => indexName).map(
-    ({ indexName }, index) => ({
+  const heatmapIndices = [
+    ...SECTOR_INDEX_MAPPING,
+    ...THEME_INDEX_MAPPING,
+  ].map(
+    ({ indexName, indexCategory }, index) => ({
       basDt,
       idxNm: indexName,
-      idxCsf: "KRX시리즈",
+      idxCsf: indexCategory,
       clpr: String(1_000 + index),
       vs: String(index - 4),
       fltRt: String((index - 4) / 10),
@@ -62,23 +66,15 @@ function makeIndexItems(basDt = DATA_DATE) {
 
   return [
     ...marketIndices,
-    ...sectors,
-    {
-      basDt,
-      idxNm: "KRX 게임 TOP 10 지수",
-      idxCsf: "테마지수",
-      clpr: "600",
-      vs: "24",
-      fltRt: "4",
-    },
+    ...heatmapIndices,
   ];
 }
 
 function assertCompleteFallback(snapshot) {
   assert.equal(snapshot.isMock, true);
   assert.equal(snapshot.indices.length, 2);
-  assert.equal(snapshot.sectors.length, 12);
-  assert.equal(snapshot.sectors.filter(({ available }) => available === false).length, 4);
+  assert.equal(snapshot.sectors.length, 8);
+  assert.equal(snapshot.themes.length, 3);
   assert.equal(snapshot.rankings.gainers.length, 5);
   assert.equal(snapshot.rankings.losers.length, 5);
   assert.equal(snapshot.rankings.turnover.length, 5);
@@ -131,13 +127,40 @@ test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
     "철강",
     "운송",
     "방송통신",
+  ]);
+  assert.deepEqual(snapshot.themes.map(({ name }) => name), [
     "조선",
     "게임",
     "2차전지",
-    "화장품",
   ]);
-  assert.equal(snapshot.sectors.filter(({ available }) => available).length, 8);
-  assert.equal(snapshot.sectors.find(({ name }) => name === "게임").changePercent, null);
+  assert.deepEqual(
+    snapshot.themes.map(({ sourceIndexName, sourceIndexCategory }) => ({
+      sourceIndexName,
+      sourceIndexCategory,
+    })),
+    THEME_INDEX_MAPPING.map(({ indexName, indexCategory }) => ({
+      sourceIndexName: indexName,
+      sourceIndexCategory: indexCategory,
+    })),
+  );
+});
+
+test("테마 지수는 공식 이름과 테마지수 분류가 모두 일치해야 한다", () => {
+  const indexItems = makeIndexItems().map((item) =>
+    item.idxNm === "KRX 게임 TOP 10 지수"
+      ? { ...item, idxCsf: "KRX시리즈" }
+      : item,
+  );
+
+  assert.throws(
+    () => buildMarketSnapshot({
+      stockItems: makeStockItems(),
+      indexItems,
+      now: NOW,
+      minimumStockRows: 10,
+    }),
+    /KRX 게임 TOP 10 지수 지수 응답이 비어 있거나 올바르지 않습니다/,
+  );
 });
 
 test("API 호출 실패 시 예시 데이터로 돌아간다", async () => {
@@ -222,13 +245,14 @@ test("Supabase 종목 시세와 공공데이터 시장 지표를 함께 사용�
   );
   assert.equal(snapshot.rankings.gainers[0].changePercent, 10);
   assert.equal(snapshot.indices.length, 2);
-  assert.equal(snapshot.sectors.length, 12);
+  assert.equal(snapshot.sectors.length, 8);
+  assert.equal(snapshot.themes.length, 3);
   assert.deepEqual(snapshot.marketBreadth, {
     totalStocks: 12,
     stocksUpThreePercent: 6,
   });
   assert.match(snapshot.dataNotice, /종목 시세는 Supabase/);
-  assert.match(snapshot.dataNotice, /지수·시장 열기·업종은 공공데이터/);
+  assert.match(snapshot.dataNotice, /지수·시장 열기·업종·테마는 공공데이터/);
 });
 
 test("Supabase 행의 기준일이 섞이면 표시 데이터 생성을 거부한다", () => {
@@ -277,7 +301,8 @@ test("공공데이터 조회만 실패하면 네 영역을 유지하도록 시�
   assert.equal(snapshot.hasExampleData, true);
   assert.equal(snapshot.stocks.length, 12);
   assert.equal(snapshot.indices.length, 2);
-  assert.equal(snapshot.sectors.length, 12);
+  assert.equal(snapshot.sectors.length, 8);
+  assert.equal(snapshot.themes.length, 3);
   assert.match(snapshot.dataNotice, /시장 지표/);
   assert.match(snapshot.dataNotice, /예시/);
 });

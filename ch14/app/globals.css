@@ -121,6 +121,17 @@ h1 {
   color: #237A45;
 }
 
+.data-status-copy {
+  max-width: 560px;
+  text-align: right;
+}
+
+.data-status-copy p {
+  margin-top: 3px;
+  color: var(--grey-500);
+  font-size: 11px;
+}
+
 .panel {
   border: 0;
   border-radius: var(--radius-card);
@@ -757,5 +768,3 @@ footer {
     padding-top: 24px;
   }
 }
-
-/* Temporary placeholder comment. */

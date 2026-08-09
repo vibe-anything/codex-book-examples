@@ -1,3 +1,5 @@
+import { resolveRegionName } from './region-codes.js';
+
 const API_ENDPOINT = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade';
 export const PAGE_SIZE = 10;
 
@@ -36,15 +38,16 @@ const TRANSACTION_FIELD_LABELS = {
 };
 
 export function validateQuery(params) {
-  const regionCode = params.get('regionCode')?.trim() || '11680';
+  const regionName = params.get('regionName')?.trim() || '서울특별시 강남구';
   const dealYmd = params.get('dealYmd')?.trim() || '';
   const pageNo = params.get('pageNo')?.trim() || '1';
   const numOfRows = params.get('numOfRows')?.trim();
 
   const errors = [];
+  const resolvedRegion = resolveRegionName(regionName);
 
-  if (!/^\d{5}$/.test(regionCode)) {
-    errors.push('지역 코드는 숫자 5자리여야 합니다.');
+  if (!resolvedRegion.ok) {
+    errors.push(resolvedRegion.error);
   }
 
   if (!/^\d{6}$/.test(dealYmd)) {
@@ -63,7 +66,8 @@ export function validateQuery(params) {
     ok: errors.length === 0,
     errors,
     value: {
-      regionCode,
+      regionCode: resolvedRegion.value?.regionCode || '',
+      regionName: resolvedRegion.value?.regionName || regionName,
       dealYmd,
       pageNo: Number(pageNo),
       numOfRows: PAGE_SIZE
@@ -103,6 +107,7 @@ export async function fetchTransactions(query, env = process.env, fetchImpl = fe
     status: items.length > 0 ? 'SUCCESS' : 'EMPTY',
     summary: {
       regionCode: query.regionCode,
+      regionName: query.regionName,
       dealYmd: query.dealYmd,
       count: totalCount,
       pageNo,
@@ -162,6 +167,7 @@ function createEmptyResult(status, query) {
     status,
     summary: {
       regionCode: query.regionCode,
+      regionName: query.regionName,
       dealYmd: query.dealYmd,
       count: 0,
       pageNo: query.pageNo,

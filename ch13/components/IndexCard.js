@@ -1,4 +1,3 @@
-import { Sparkline } from "./Sparkline";
 import { changeTone, formatNumber, formatSigned } from "@/lib/market";
 
 export function IndexCard({ index }) {
@@ -14,12 +13,6 @@ export function IndexCard({ index }) {
           <span className="change-badge">{formatSigned(index.changePercent, 2)}%</span>
         </p>
       </div>
-      <Sparkline
-        values={index.intraday}
-        tone={tone}
-        indexCode={index.code}
-        label={`${index.name} 최근 종가 흐름`}
-      />
     </article>
   );
 }

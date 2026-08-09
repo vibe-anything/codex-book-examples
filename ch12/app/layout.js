@@ -1,8 +1,8 @@
-import './globals.css';
+import "./globals.css";
 
 export const metadata = {
-  title: '실거래가 조회',
-  description: '서울 강남구 아파트 매매 실거래가 조회'
+  title: "오늘의 국내 시장",
+  description: "국내 주식시장의 흐름을 한눈에 확인하는 대시보드",
 };
 
 export default function RootLayout({ children }) {

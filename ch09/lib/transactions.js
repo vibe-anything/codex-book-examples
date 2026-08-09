@@ -1,4 +1,5 @@
 const API_ENDPOINT = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade';
+export const PAGE_SIZE = 10;
 
 const AUTH_ERROR_CODES = new Set([
   '01',
@@ -38,7 +39,7 @@ export function validateQuery(params) {
   const regionCode = params.get('regionCode')?.trim() || '11680';
   const dealYmd = params.get('dealYmd')?.trim() || '';
   const pageNo = params.get('pageNo')?.trim() || '1';
-  const numOfRows = params.get('numOfRows')?.trim() || '10';
+  const numOfRows = params.get('numOfRows')?.trim();
 
   const errors = [];
 
@@ -54,8 +55,8 @@ export function validateQuery(params) {
     errors.push('페이지 번호는 1 이상의 숫자여야 합니다.');
   }
 
-  if (!/^[1-9]\d*$/.test(numOfRows)) {
-    errors.push('행 수는 1 이상의 숫자여야 합니다.');
+  if (numOfRows && numOfRows !== String(PAGE_SIZE)) {
+    errors.push('행 수는 10으로 고정됩니다.');
   }
 
   return {
@@ -65,7 +66,7 @@ export function validateQuery(params) {
       regionCode,
       dealYmd,
       pageNo: Number(pageNo),
-      numOfRows: Number(numOfRows)
+      numOfRows: PAGE_SIZE
     }
   };
 }
@@ -94,13 +95,19 @@ export async function fetchTransactions(query, env = process.env, fetchImpl = fe
   }
 
   const items = parseTransactionItems(xml);
+  const totalCount = parsePositiveInteger(getTagValue(xml, 'totalCount'), items.length);
+  const pageNo = parsePositiveInteger(getTagValue(xml, 'pageNo'), query.pageNo);
+  const numOfRows = parsePositiveInteger(getTagValue(xml, 'numOfRows'), query.numOfRows);
 
   return {
     status: items.length > 0 ? 'SUCCESS' : 'EMPTY',
     summary: {
       regionCode: query.regionCode,
       dealYmd: query.dealYmd,
-      count: items.length
+      count: totalCount,
+      pageNo,
+      numOfRows,
+      totalPages: Math.max(1, Math.ceil(totalCount / numOfRows))
     },
     items
   };
@@ -156,7 +163,10 @@ function createEmptyResult(status, query) {
     summary: {
       regionCode: query.regionCode,
       dealYmd: query.dealYmd,
-      count: 0
+      count: 0,
+      pageNo: query.pageNo,
+      numOfRows: query.numOfRows,
+      totalPages: 1
     },
     items: []
   };
@@ -165,6 +175,11 @@ function createEmptyResult(status, query) {
 function parseDealAmount(value) {
   const amount = Number(String(value).replaceAll(',', '').trim());
   return Number.isFinite(amount) ? amount : 0;
+}
+
+function parsePositiveInteger(value, fallback) {
+  const number = Number(String(value).trim());
+  return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
 function normalizeServiceKey(serviceKey) {

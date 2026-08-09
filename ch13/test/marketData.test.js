@@ -19,6 +19,7 @@ function makeStockItems(basDt = DATA_DATE) {
     return {
       basDt,
       mrktCtg: index % 2 ? "KOSDAQ" : "KOSPI",
+      srtnCd: String(index + 1).padStart(6, "0"),
       itmsNm: `테스트종목${String(index + 1).padStart(2, "0")}`,
       clpr: String(10_000 + index * 1_000),
       fltRt: String(changePercent),
@@ -57,14 +58,7 @@ function makeIndexItems(basDt = DATA_DATE) {
     }),
   );
 
-  const previousMarketIndices = marketIndices.map((item) => ({
-    ...item,
-    basDt: "20260729",
-    clpr: String(Number(item.clpr) - 10),
-  }));
-
   return [
-    ...previousMarketIndices,
     ...marketIndices,
     ...sectors,
     {
@@ -86,6 +80,7 @@ function assertCompleteFallback(snapshot) {
   assert.equal(snapshot.rankings.gainers.length, 5);
   assert.equal(snapshot.rankings.losers.length, 5);
   assert.equal(snapshot.rankings.turnover.length, 5);
+  assert.ok(snapshot.stocks.length > 0);
 }
 
 test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
@@ -99,7 +94,7 @@ test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
   assert.equal(snapshot.isMock, false);
   assert.equal(snapshot.asOf, "2026.07.30 종가");
   assert.deepEqual(snapshot.indices.map(({ code }) => code), ["KOSPI", "KOSDAQ"]);
-  assert.deepEqual(snapshot.indices[0].intraday, [5583.56, 5593.56]);
+  assert.equal("intraday" in snapshot.indices[0], false);
   assert.deepEqual(snapshot.marketBreadth, {
     totalStocks: 12,
     stocksUpThreePercent: 6,
@@ -107,6 +102,13 @@ test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
   assert.equal(snapshot.rankings.gainers.length, 5);
   assert.equal(snapshot.rankings.losers.length, 5);
   assert.equal(snapshot.rankings.turnover[0].turnover, 12);
+  assert.equal(snapshot.stocks.length, 12);
+  assert.deepEqual(snapshot.stocks[0], {
+    code: "000001",
+    name: "테스트종목01",
+    price: 10000,
+    changePercent: 10,
+  });
   assert.deepEqual(snapshot.sectors.map(({ name }) => name), [
     "반도체",
     "자동차",
@@ -123,23 +125,6 @@ test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
   ]);
   assert.equal(snapshot.sectors.filter(({ available }) => available).length, 8);
   assert.equal(snapshot.sectors.find(({ name }) => name === "게임").changePercent, null);
-});
-
-test("업종은 같은 이름이어도 KRX시리즈 지수만 사용한다", () => {
-  const indexItems = makeIndexItems().map((item) =>
-    item.idxNm === "KRX 반도체" ? { ...item, idxCsf: "테마지수" } : item,
-  );
-
-  assert.throws(
-    () =>
-      buildMarketSnapshot({
-        stockItems: makeStockItems(),
-        indexItems,
-        now: NOW,
-        minimumStockRows: 10,
-      }),
-    /KRX 반도체 지수 응답이 비어 있거나 올바르지 않습니다/,
-  );
 });
 
 test("API 호출 실패 시 예시 데이터로 돌아간다", async () => {

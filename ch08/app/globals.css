@@ -92,6 +92,12 @@ button:disabled {
   background: #7c909f;
 }
 
+.secondary-button {
+  color: #1d2733;
+  background: #edf2f5;
+  border: 1px solid #cbd5df;
+}
+
 .summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -166,6 +172,71 @@ td {
   font-size: 14px;
 }
 
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover,
+.clickable-row:focus {
+  outline: none;
+  background: #f3faf8;
+}
+
+.detail-wrap {
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #d9e0e7;
+  border-radius: 8px;
+}
+
+.detail-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.detail-header p {
+  margin-top: 6px;
+  color: #5d6875;
+}
+
+.field-list {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid #e3e9ef;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+  border-bottom: 1px solid #e3e9ef;
+}
+
+.field-row dt,
+.field-row dd {
+  margin: 0;
+  padding: 12px 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.field-row dt {
+  display: grid;
+  gap: 4px;
+  font-weight: 800;
+  color: #536170;
+  background: #f2f5f8;
+}
+
+.field-row dt code {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6e7b89;
+  white-space: normal;
+}
+
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 20px, 1120px);
@@ -175,5 +246,15 @@ td {
   .search-form,
   .summary {
     grid-template-columns: 1fr;
+  }
+
+  .detail-header,
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .detail-header .secondary-button {
+    width: 100%;
   }
 }

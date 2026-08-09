@@ -4,6 +4,11 @@ import {
   MARKET_INDEX_PATH,
   STOCK_PRICE_PATH,
 } from "./dataGoKr.js";
+import {
+  SUPABASE_PUBLISHABLE_KEY_ENV,
+  SUPABASE_URL_ENV,
+  fetchLatestDailyQuotes,
+} from "./supabaseMarketData.js";
 
 const MARKET_CATEGORIES = new Set(["KOSPI", "KOSDAQ"]);
 const RANKING_SIZE = 5;
@@ -66,6 +71,10 @@ export function isMarketDataStale(basDt, now = new Date()) {
 
 function formatMarketDate(basDt) {
   return `${basDt.slice(0, 4)}.${basDt.slice(4, 6)}.${basDt.slice(6, 8)} 종가`;
+}
+
+function formatSupabaseDate(tradeDate) {
+  return `${tradeDate.replaceAll("-", ".")} 종가`;
 }
 
 function findIndex(items, name, category) {
@@ -205,6 +214,8 @@ export function buildMarketSnapshot({
     asOf: formatMarketDate(stockDate),
     dataDate: stockDate,
     isMock: false,
+    source: "public-api",
+    dataNotice: "금융위원회 공공데이터포털의 최근 공개 시세",
     indices: [
       {
         code: "KOSPI",
@@ -229,9 +240,93 @@ export function buildMarketSnapshot({
   };
 }
 
+function parseSupabaseNumber(value, fieldName) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    throw new Error(`Supabase ${fieldName} 값이 없습니다.`);
+  }
+
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`Supabase ${fieldName} 숫자 형식이 올바르지 않습니다.`);
+  }
+
+  return number;
+}
+
+export function buildSupabaseMarketSnapshot({ tradeDate, rows }) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error("Supabase 최신 기준일의 시세 데이터가 없습니다.");
+  }
+
+  const stockItems = rows.map((row) => {
+    if (row.trade_date !== tradeDate) {
+      throw new Error("Supabase 기준일이 섞여 있습니다.");
+    }
+    if (!row.stock_code || !row.stock_name) {
+      throw new Error("Supabase 종목 정보가 누락됐습니다.");
+    }
+
+    return {
+      basDt: tradeDate.replaceAll("-", ""),
+      srtnCd: String(row.stock_code),
+      itmsNm: String(row.stock_name),
+      clpr: parseSupabaseNumber(row.close_price, `${row.stock_name} 종가`),
+      fltRt: parseSupabaseNumber(row.change_rate, `${row.stock_name} 등락률`),
+      trPrc: parseSupabaseNumber(row.trading_value, `${row.stock_name} 거래대금`),
+    };
+  });
+  const stocks = buildStocks(stockItems);
+
+  return {
+    asOf: formatSupabaseDate(tradeDate),
+    dataDate: tradeDate,
+    stocks,
+    rankings: buildRankings(stockItems),
+  };
+}
+
+function errorMessage(error, fallback) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getFallbackSnapshot(reason) {
+  return {
+    ...mockMarketSnapshot,
+    source: "example",
+    fallbackReason: reason,
+    dataNotice: reason
+      ? `외부 데이터 조회에 실패해 예시 데이터를 표시합니다. (${reason})`
+      : "외부 데이터 조회에 실패해 예시 데이터를 표시합니다.",
+  };
+}
+
+function combineSupabaseStocksWithMarketData(
+  supabaseSnapshot,
+  publicApiSnapshot,
+) {
+  const usesExampleMarketData = publicApiSnapshot.isMock;
+
+  return {
+    ...publicApiSnapshot,
+    asOf: supabaseSnapshot.asOf,
+    dataDate: supabaseSnapshot.dataDate,
+    isMock: false,
+    hasExampleData: usesExampleMarketData,
+    source: usesExampleMarketData
+      ? "supabase+example"
+      : "supabase+public-api",
+    dataNotice: usesExampleMarketData
+      ? `종목 시세는 Supabase, 시장 지표는 공공데이터 조회 실패로 예시를 표시합니다. (${publicApiSnapshot.fallbackReason})`
+      : `종목 시세는 Supabase, 지수·시장 열기·업종은 공공데이터를 사용합니다. (시장 지표 ${publicApiSnapshot.asOf})`,
+    stocks: supabaseSnapshot.stocks,
+    rankings: supabaseSnapshot.rankings,
+  };
+}
+
 export async function getMarketSnapshot({
   fetchItems = fetchDataGoKrItems,
   now = new Date(),
+  minimumStockRows = MINIMUM_COMPLETE_STOCK_ROWS,
   onFallback = (error) => console.error("실데이터 수집 실패, 예시 데이터 사용:", error.message),
 } = {}) {
   try {
@@ -240,9 +335,70 @@ export async function getMarketSnapshot({
       fetchItems(MARKET_INDEX_PATH, { pageNo: 1, numOfRows: 1_000 }),
     ]);
 
-    return buildMarketSnapshot({ stockItems, indexItems, now });
+    return buildMarketSnapshot({
+      stockItems,
+      indexItems,
+      now,
+      minimumStockRows,
+    });
   } catch (error) {
     onFallback(error);
-    return mockMarketSnapshot;
+    return getFallbackSnapshot(
+      errorMessage(error, "공공데이터포털 알 수 없는 조회 오류"),
+    );
   }
+}
+
+export async function getDashboardSnapshot({
+  fetchSupabase = fetchLatestDailyQuotes,
+  fetchItems = fetchDataGoKrItems,
+  now = new Date(),
+  minimumStockRows = MINIMUM_COMPLETE_STOCK_ROWS,
+  onFallback = (error) => console.error("데이터 조회 실패:", error.message),
+} = {}) {
+  let supabaseSnapshot;
+  let supabaseFailureReason;
+
+  try {
+    const latestQuotes = await fetchSupabase();
+    supabaseSnapshot = buildSupabaseMarketSnapshot(latestQuotes);
+  } catch (error) {
+    supabaseFailureReason = errorMessage(
+      error,
+      "Supabase 알 수 없는 조회 오류",
+    );
+  }
+
+  const publicApiSnapshot = await getMarketSnapshot({
+    fetchItems,
+    now,
+    minimumStockRows,
+    onFallback,
+  });
+
+  if (supabaseSnapshot) {
+    return combineSupabaseStocksWithMarketData(
+      supabaseSnapshot,
+      publicApiSnapshot,
+    );
+  }
+
+  if (!publicApiSnapshot.isMock) {
+    return {
+      ...publicApiSnapshot,
+      dataNotice: `Supabase 조회 실패로 공공데이터를 표시합니다. (${supabaseFailureReason})`,
+    };
+  }
+
+  const publicApiFailureReason =
+    publicApiSnapshot.fallbackReason ?? "공공데이터포털 알 수 없는 조회 오류";
+
+  return {
+    ...publicApiSnapshot,
+    dataNotice: [
+      "Supabase와 공공데이터 조회에 실패해 예시 데이터를 표시합니다.",
+      `${SUPABASE_URL_ENV}·${SUPABASE_PUBLISHABLE_KEY_ENV} 설정과 SELECT 정책을 확인하세요.`,
+      `(Supabase: ${supabaseFailureReason} / 공공데이터: ${publicApiFailureReason})`,
+    ].join(" "),
+  };
 }

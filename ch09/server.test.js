@@ -7,8 +7,7 @@ describe('validateQuery', () => {
     const params = new URLSearchParams({
       regionCode: '11680',
       dealYmd: '202401',
-      pageNo: '1',
-      numOfRows: '10'
+      pageNo: '1'
     });
 
     assert.deepEqual(validateQuery(params), {
@@ -58,6 +57,7 @@ describe('fetchTransactions', () => {
     assert.equal(result.status, 'SUCCESS');
     assert.equal(requestedUrl.searchParams.get('LAWD_CD'), '11680');
     assert.equal(requestedUrl.searchParams.get('DEAL_YMD'), '202401');
+    assert.equal(requestedUrl.searchParams.get('numOfRows'), '10');
     assert.equal(requestedUrl.searchParams.get('serviceKey'), 'server-only-key');
     assert.equal(result.items.length, 1);
     assert.equal(result.items[0].dealAmount, 245000);

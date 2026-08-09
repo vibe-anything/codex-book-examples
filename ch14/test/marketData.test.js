@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildMarketSnapshot,
+  buildSupabaseMarketSnapshot,
+  getDashboardSnapshot,
   getMarketSnapshot,
   SECTOR_INDEX_MAPPING,
 } from "../lib/marketData.js";
@@ -81,6 +83,17 @@ function assertCompleteFallback(snapshot) {
   assert.equal(snapshot.rankings.losers.length, 5);
   assert.equal(snapshot.rankings.turnover.length, 5);
   assert.ok(snapshot.stocks.length > 0);
+}
+
+function makeSupabaseRows(tradeDate = "2026-07-30") {
+  return makeStockItems(tradeDate.replaceAll("-", "")).map((item) => ({
+    trade_date: tradeDate,
+    stock_code: item.srtnCd,
+    stock_name: item.itmsNm,
+    close_price: item.clpr,
+    change_rate: item.fltRt,
+    trading_value: item.trPrc,
+  }));
 }
 
 test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
@@ -173,4 +186,117 @@ test("허용 범위보다 오래된 응답이면 예시 데이터로 돌아간�
   });
 
   assertCompleteFallback(snapshot);
+});
+
+test("Supabase 종목 시세와 공공데이터 시장 지표를 함께 사용한다", async () => {
+  let publicApiCalled = false;
+  const supabaseRows = makeSupabaseRows();
+  supabaseRows[5] = { ...supabaseRows[5], change_rate: "2" };
+  const snapshot = await getDashboardSnapshot({
+    fetchSupabase: async () => ({
+      tradeDate: "2026-07-30",
+      rows: supabaseRows,
+    }),
+    fetchItems: async (pathname) => {
+      publicApiCalled = true;
+      return pathname === STOCK_PRICE_PATH
+        ? makeStockItems()
+        : makeIndexItems();
+    },
+    now: NOW,
+    minimumStockRows: 10,
+    onFallback: () => {},
+  });
+
+  assert.equal(publicApiCalled, true);
+  assert.equal(snapshot.source, "supabase+public-api");
+  assert.equal(snapshot.isMock, false);
+  assert.equal(snapshot.hasExampleData, false);
+  assert.equal(snapshot.asOf, "2026.07.30 종가");
+  assert.equal(snapshot.dataDate, "2026-07-30");
+  assert.equal(snapshot.stocks.length, 12);
+  assert.equal(snapshot.stocks[0].price, 10000);
+  assert.equal(
+    snapshot.stocks.find((stock) => stock.code === "000006").changePercent,
+    2,
+  );
+  assert.equal(snapshot.rankings.gainers[0].changePercent, 10);
+  assert.equal(snapshot.indices.length, 2);
+  assert.equal(snapshot.sectors.length, 12);
+  assert.deepEqual(snapshot.marketBreadth, {
+    totalStocks: 12,
+    stocksUpThreePercent: 6,
+  });
+  assert.match(snapshot.dataNotice, /종목 시세는 Supabase/);
+  assert.match(snapshot.dataNotice, /지수·시장 열기·업종은 공공데이터/);
+});
+
+test("Supabase 행의 기준일이 섞이면 표시 데이터 생성을 거부한다", () => {
+  const rows = makeSupabaseRows();
+  rows[0] = { ...rows[0], trade_date: "2026-07-29" };
+
+  assert.throws(
+    () => buildSupabaseMarketSnapshot({ tradeDate: "2026-07-30", rows }),
+    /기준일이 섞여 있습니다/,
+  );
+});
+
+test("Supabase 조회가 실패하면 기존 공공데이터 API를 사용한다", async () => {
+  const snapshot = await getDashboardSnapshot({
+    fetchSupabase: async () => {
+      throw new Error("Supabase empty");
+    },
+    fetchItems: async (pathname) =>
+      pathname === STOCK_PRICE_PATH ? makeStockItems() : makeIndexItems(),
+    now: NOW,
+    minimumStockRows: 10,
+    onFallback: () => {},
+  });
+
+  assert.equal(snapshot.source, "public-api");
+  assert.equal(snapshot.isMock, false);
+  assert.match(snapshot.dataNotice, /Supabase 조회 실패/);
+  assert.match(snapshot.dataNotice, /Supabase empty/);
+});
+
+test("공공데이터 조회만 실패하면 네 영역을 유지하도록 시장 지표 예시를 쓴다", async () => {
+  const snapshot = await getDashboardSnapshot({
+    fetchSupabase: async () => ({
+      tradeDate: "2026-07-30",
+      rows: makeSupabaseRows(),
+    }),
+    fetchItems: async () => {
+      throw new Error("public API unavailable");
+    },
+    now: NOW,
+    onFallback: () => {},
+  });
+
+  assert.equal(snapshot.source, "supabase+example");
+  assert.equal(snapshot.isMock, false);
+  assert.equal(snapshot.hasExampleData, true);
+  assert.equal(snapshot.stocks.length, 12);
+  assert.equal(snapshot.indices.length, 2);
+  assert.equal(snapshot.sectors.length, 12);
+  assert.match(snapshot.dataNotice, /시장 지표/);
+  assert.match(snapshot.dataNotice, /예시/);
+});
+
+test("Supabase와 기존 API가 모두 실패할 때만 예시 데이터를 안내한다", async () => {
+  const snapshot = await getDashboardSnapshot({
+    fetchSupabase: async () => {
+      throw new Error("Supabase unavailable");
+    },
+    fetchItems: async () => {
+      throw new Error("public API unavailable");
+    },
+    now: NOW,
+    onFallback: () => {},
+  });
+
+  assert.equal(snapshot.source, "example");
+  assert.equal(snapshot.isMock, true);
+  assert.match(snapshot.dataNotice, /예시 데이터/);
+  assert.match(snapshot.dataNotice, /NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(snapshot.dataNotice, /SELECT 정책/);
 });

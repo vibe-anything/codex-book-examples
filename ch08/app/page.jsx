@@ -29,10 +29,12 @@ export default function HomePage() {
     isError: false
   });
   const [result, setResult] = useState(EMPTY_RESULT);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setIsLoading(true);
+    setSelectedItem(null);
 
     const formData = new FormData(event.currentTarget);
     const params = new URLSearchParams(formData);
@@ -47,6 +49,7 @@ export default function HomePage() {
           isError: true
         });
         setResult(EMPTY_RESULT);
+        setSelectedItem(null);
         return;
       }
 
@@ -64,6 +67,7 @@ export default function HomePage() {
         isError: true
       });
       setResult(EMPTY_RESULT);
+      setSelectedItem(null);
     } finally {
       setIsLoading(false);
     }
@@ -119,35 +123,75 @@ export default function HomePage() {
         {status.message}
       </p>
 
-      <section className="table-wrap" aria-labelledby="table-title">
-        <h2 id="table-title">거래 목록</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>단지명</th>
-              <th>법정동</th>
-              <th>거래금액</th>
-              <th>전용면적</th>
-              <th>층</th>
-              <th>계약일</th>
-              <th>건축년도</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.items.map((item, index) => (
-              <tr key={`${item.apartmentName}-${item.dealDate}-${index}`}>
-                <td>{item.apartmentName || '-'}</td>
-                <td>{item.legalDong || '-'}</td>
-                <td>{formatDealAmount(item.dealAmount)}</td>
-                <td>{item.exclusiveArea || '-'}</td>
-                <td>{item.floor || '-'}</td>
-                <td>{item.dealDate || '-'}</td>
-                <td>{item.buildYear || '-'}</td>
-              </tr>
+      {selectedItem ? (
+        <section className="detail-wrap" aria-labelledby="detail-title">
+          <div className="detail-header">
+            <div>
+              <h2 id="detail-title">{selectedItem.apartmentName || '거래 상세'}</h2>
+              <p>
+                {selectedItem.legalDong || '-'} · {selectedItem.dealDate || '-'} ·{' '}
+                {formatDealAmount(selectedItem.dealAmount)}
+              </p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => setSelectedItem(null)}>
+              목록으로
+            </button>
+          </div>
+
+          <dl className="field-list">
+            {(selectedItem.rawFields || []).map((field, index) => (
+              <div key={`${field.key}-${index}`} className="field-row">
+                <dt>
+                  <span>{field.label || field.key}</span>
+                  {field.label && field.label !== field.key ? <code>{field.key}</code> : null}
+                </dt>
+                <dd>{field.value || '-'}</dd>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </section>
+          </dl>
+        </section>
+      ) : (
+        <section className="table-wrap" aria-labelledby="table-title">
+          <h2 id="table-title">거래 목록</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>단지명</th>
+                <th>법정동</th>
+                <th>거래금액</th>
+                <th>전용면적</th>
+                <th>층</th>
+                <th>계약일</th>
+                <th>건축년도</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.items.map((item, index) => (
+                <tr
+                  key={`${item.apartmentName}-${item.dealDate}-${index}`}
+                  className="clickable-row"
+                  tabIndex={0}
+                  onClick={() => setSelectedItem(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setSelectedItem(item);
+                    }
+                  }}
+                >
+                  <td>{item.apartmentName || '-'}</td>
+                  <td>{item.legalDong || '-'}</td>
+                  <td>{formatDealAmount(item.dealAmount)}</td>
+                  <td>{item.exclusiveArea || '-'}</td>
+                  <td>{item.floor || '-'}</td>
+                  <td>{item.dealDate || '-'}</td>
+                  <td>{item.buildYear || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
     </main>
   );
 }

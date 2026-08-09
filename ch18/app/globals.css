@@ -731,6 +731,49 @@ h1 {
   letter-spacing: -.02em;
 }
 
+.theme-heading {
+  align-items: flex-end;
+}
+
+.theme-heading > div > p,
+.theme-exclusion-note {
+  margin-top: 3px;
+  color: var(--grey-500);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.theme-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.theme-tile {
+  height: 82px;
+}
+
+.theme-tile header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.theme-tile header span {
+  flex: none;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: .75;
+}
+
+.theme-exclusion-note {
+  margin: 8px 4px 0;
+}
+
 .sector-up-1 {
   background: var(--sector-up-1-bg);
   color: var(--sector-up-1-text);

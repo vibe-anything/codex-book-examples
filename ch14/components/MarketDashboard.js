@@ -5,6 +5,14 @@ import { SectorHeatmap } from "./SectorHeatmap";
 import { Watchlist } from "./Watchlist";
 
 export function MarketDashboard({ snapshot }) {
+  const sourceLabel = {
+    supabase: "Supabase",
+    "supabase+public-api": "Supabase + 공공데이터",
+    "supabase+example": "Supabase + 예시 데이터",
+    "public-api": "공공데이터",
+    example: "예시 데이터",
+  }[snapshot.source] ?? (snapshot.isMock ? "예시 데이터" : "공공데이터");
+
   return (
     <main className="dashboard-shell">
       <header className="dashboard-header">
@@ -13,10 +21,19 @@ export function MarketDashboard({ snapshot }) {
           <h1>시장 한눈에 보기</h1>
         </div>
         <div className="data-status">
-          <span className={snapshot.isMock ? "mock-badge" : "source-badge"}>
-            {snapshot.isMock ? "예시 데이터" : "공공데이터"}
+          <span
+            className={
+              snapshot.isMock || snapshot.hasExampleData
+                ? "mock-badge"
+                : "source-badge"
+            }
+          >
+            {sourceLabel}
           </span>
-          <time>{snapshot.asOf} 기준</time>
+          <div className="data-status-copy">
+            <time>{snapshot.asOf} 기준</time>
+            <p>{snapshot.dataNotice}</p>
+          </div>
         </div>
       </header>
 
@@ -41,9 +58,13 @@ export function MarketDashboard({ snapshot }) {
       </section>
 
       <footer>
-        {snapshot.isMock
-          ? "외부 데이터 수집에 실패해 예시 데이터를 표시하고 있습니다."
-          : "금융위원회 공공데이터를 사용하며, 기준 거래일 다음 영업일 오후 1시 이후 갱신될 수 있습니다."}
+        {snapshot.source === "supabase+public-api"
+          ? "종목은 Supabase 최신 종가, 시장 지표는 금융위원회 공공데이터 기준이며 실시간 투자 정보가 아닙니다."
+          : snapshot.source === "supabase+example"
+            ? "종목은 Supabase 실제 시세이며, 시장 지표는 공공데이터 조회 실패에 대비한 예시입니다."
+          : snapshot.isMock
+            ? "현재 수치는 조회 실패에 대비한 예시이며 실제 투자 정보가 아닙니다."
+            : "금융위원회 공공데이터를 사용하며, 기준 거래일 다음 영업일 오후 1시 이후 갱신될 수 있습니다."}
       </footer>
     </main>
   );

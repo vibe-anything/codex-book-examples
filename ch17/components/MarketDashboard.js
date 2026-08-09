@@ -3,6 +3,7 @@ import { MarketHeat } from "./MarketHeat";
 import { RankingTable } from "./RankingTable";
 import { SectorHeatmap } from "./SectorHeatmap";
 import { Watchlist } from "./Watchlist";
+import { CompareEntryLink } from "./CompareEntryLink";
 
 export function MarketDashboard({ snapshot }) {
   const sourceLabel = {
@@ -36,6 +37,8 @@ export function MarketDashboard({ snapshot }) {
           </div>
         </div>
       </header>
+
+      <CompareEntryLink />
 
       <Watchlist stocks={snapshot.stocks} />
 

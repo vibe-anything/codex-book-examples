@@ -1,9 +1,9 @@
-# 16장 배포 검증 기록 — codex-vercel-example
+# 15장 배포 검증 기록 — codex-vercel-example
 
-이 문서는 `ch16` 폴더의 코드를 Vercel 연동 저장소
+이 문서는 `ch15` 폴더의 코드를 Vercel 연동 저장소
 [`forest-lim-dev/codex-vercel-example`](https://github.com/forest-lim-dev/codex-vercel-example)에
 동기화해 실제로 배포하고, 배포된 화면을 읽기 전용으로 검증한 기록이다.
-16장 본문의 §16.4~16.6 흐름(첫 배포 → 예시 데이터 증상 → 진단 → 환경변수 입력 →
+15장 본문의 §15.4~15.6 흐름(첫 배포 → 예시 데이터 증상 → 진단 → 환경변수 입력 →
 재배포 → 확인)을 실제 배포로 재현했다.
 
 검증 일시: 2026-08-05 (KST)
@@ -30,9 +30,9 @@
 
 ## 동기화 내용
 
-`ch16` 폴더를 저장소 상태로 그대로 미러했다(`rsync -a --delete`,
+`ch15` 폴더를 저장소 상태로 그대로 미러했다(`rsync -a --delete`,
 `.git`·`node_modules`·`.next`·`.idea`·`.vercel`·`.env.local` 제외). 결과적으로
-작업 트리가 `ch16`과 바이트 단위로 같다.
+작업 트리가 `ch15`와 바이트 단위로 같다.
 
 | 구분 | 내용 |
 | --- | --- |
@@ -41,7 +41,7 @@
 | 추가 | `components/` 6개, `data/marketSnapshot.js`, `test/` 3개, `AGENTS.md`, `eslint.config.mjs`, `jsconfig.json`, `lib/supabaseMarketData.js`, `lib/market.js` |
 | 교체 | `app/page.js`, `app/layout.js`, `app/globals.css`, `lib/marketData.js`, `lib/dataGoKr.js`, `package.json`, `package-lock.json`, `README.md`, `PROMPTS.md`, `.gitignore` |
 
-`.idea/`는 `ch16/.gitignore`에 없다(책 저장소는 루트 `.gitignore`가 처리). 미러를
+`.idea/`는 `ch15/.gitignore`에 없다(책 저장소는 루트 `.gitignore`가 처리). 미러를
 깨지 않으려고 저장소의 `.git/info/exclude`에만 넣었다. 커밋되지 않는 로컬 설정이다.
 
 푸시 전 로컬 검증: `npm ci` 후 `npm test`(`node --test && next build`) 통과 —
@@ -52,7 +52,7 @@
 | 단계 | 커밋 | 배포 | 결과 |
 | --- | --- | --- | --- |
 | 1차 (before) | `38652e5` | `fr9ioe2mu` | Ready, 화면은 전면 예시 데이터 |
-| 환경변수 교체 | — | — | 구버전 이름 제거, ch16 계약 이름 등록 |
+| 환경변수 교체 | — | — | 구버전 이름 제거, ch15 계약 이름 등록 |
 | 2차 (after) | `5efa42b` | `gaednavw1` | Ready, 종목 시세가 Supabase 실데이터로 전환. 시장 지표는 예시로 남음 |
 | 타임아웃 수정 | — | — | `REQUEST_TIMEOUT_MS` 10초 → 25초, 시간 초과와 형식 오류 구분 |
 | 3차 (fixed) | `20b1fec` | `5lkt9rg27` | Ready, 화면 전체가 실데이터 |
@@ -65,12 +65,12 @@
 으로 **빌드 타임에 프리렌더**되므로(`○ (Static)`), 환경변수만 바꾸면 기존 빌드
 산출물이 그대로 서빙되어 화면이 바뀌지 않는다. 새 빌드를 반드시 유발해야 한다.
 
-## §16.4~16.5 — 첫 배포의 예시 데이터 증상
+## §15.4~15.5 — 첫 배포의 예시 데이터 증상
 
 ![첫 배포 화면 — 전면 예시 데이터](01-before-example-data.png)
 
 Vercel에 등록돼 있던 환경변수 이름이 구세대(`SUPABASE_URL`·`SUPABASE_ANON_KEY`)라
-ch16 코드가 요구하는 이름과 어긋났다. 화면 상태는 다음과 같았다.
+ch15 코드가 요구하는 이름과 어긋났다. 화면 상태는 다음과 같았다.
 
 - 배지: `예시 데이터` (회색 `mock-badge`)
 - 기준일: `예시 종가 기준`
@@ -99,9 +99,9 @@ Failed to set fetch cache URL {
 
 인증키는 Vercel이 `[REDACTED]`로 가려서 기록한다.
 
-## §16.6 — 환경변수 입력과 재배포
+## §15.6 — 환경변수 입력과 재배포
 
-Vercel Production 환경변수를 ch16 계약으로 교체했다. 값은 화면·로그에 출력하지
+Vercel Production 환경변수를 ch15 계약으로 교체했다. 값은 화면·로그에 출력하지
 않고 stdin으로만 `vercel env add`에 전달했다.
 
 | 작업 | 이름 |
@@ -134,7 +134,7 @@ Vercel Production 환경변수를 ch16 계약으로 교체했다. 값은 화면�
 데이터를 계속 보여 주고 있다는 뜻이다.
 
 처음에는 "Vercel이 해외 리전이라 공공데이터포털이 막는다"고 읽었다. 빌드 로그에
-`TimeoutError`가 찍혀 있었고, 16장 `PROMPTS.md`에도 같은 취지가 적혀 있었기
+`TimeoutError`가 찍혀 있었고, 15장 `PROMPTS.md`에도 같은 취지가 적혀 있었기
 때문이다. **이 진단은 틀렸다.** 두 가지를 잘못 읽었다.
 
 첫째, 오류 메시지를 잘못 읽었다. `lib/dataGoKr.js`의 실패 경로는 셋으로 갈린다.
@@ -183,7 +183,7 @@ Vercel Production 환경변수를 ch16 계약으로 교체했다. 값은 화면�
 - 시간 초과와 형식 오류를 **구분**했다. 중단이면 몇 초 안에 못 받았는지 말하고,
   진짜 파싱 실패일 때만 "JSON이 아닌 응답"이라고 한다.
 
-이 파일은 ch13~ch19 일곱 개 장에 동일하게 들어 있어 모두 같은 내용으로 고쳤다.
+이 파일은 ch12~ch18 일곱 개 장에 동일하게 들어 있어 모두 같은 내용으로 고쳤다.
 장별로 다르게 두면 장간 diff에 설명 없는 변경이 생기기 때문이다.
 
 ![타임아웃 수정 후 — 화면 전체가 실데이터](03-after-timeout-fix.png)
@@ -199,13 +199,13 @@ Vercel Production 환경변수를 ch16 계약으로 교체했다. 값은 화면�
 로컬에서 미리 확인해 둔 기준선(`source: supabase+public-api`)과 배포 화면이 이제
 일치한다.
 
-> 이 절은 원고 §16.6에도 반영이 필요하다. 본문은 검증 기준으로 "'예시 데이터' 문구가
+> 이 절은 원고 §15.6에도 반영이 필요하다. 본문은 검증 기준으로 "'예시 데이터' 문구가
 > 사라졌는지"를 제시하는데, 타임아웃을 고치기 전 상태에서는 배지가
 > `Supabase + 예시 데이터`로 남아 이 기준이 실패로 판정된다.
 
 ## Git 비밀 검사
 
-`ch17/.agents/skills/verify-market-dashboard/scripts/scan_git_secrets.py`를 이
+`ch16/.agents/skills/verify-market-dashboard/scripts/scan_git_secrets.py`를 이
 저장소에 실행했다(스크립트는 저장소에 커밋하지 않았다). 결과는 차단 0건, 검토
 후보 3건이었다. 세 건을 모두 실제 인증키의 SHA-256 지문과 대조했고, 도달 가능한
 모든 커밋에서 **실제 키와 일치하는 값은 0건**이었다.

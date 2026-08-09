@@ -13,6 +13,7 @@ const STATUS_MESSAGES = {
 
 const DEFAULT_SUMMARY = {
   regionCode: '-',
+  regionName: '-',
   dealYmd: '-',
   count: '-',
   pageNo: 1,
@@ -49,7 +50,7 @@ export default function HomePage() {
     const formData = new FormData(event.currentTarget);
     const dealYmdMonth = formData.get('dealYmdMonth')?.trim() || '';
     const query = {
-      regionCode: formData.get('regionCode')?.trim() || '',
+      regionName: formData.get('regionName')?.trim() || '',
       dealYmd: dealYmdMonth.replace('-', ''),
       exclusiveAreaRange: formData.get('exclusiveAreaRange') || 'all'
     };
@@ -62,7 +63,7 @@ export default function HomePage() {
     setSelectedItem(null);
 
     const params = new URLSearchParams({
-      regionCode: query.regionCode,
+      regionName: query.regionName,
       dealYmd: query.dealYmd,
       pageNo: String(pageNo)
     });
@@ -123,8 +124,8 @@ export default function HomePage() {
 
         <form className="search-form" onSubmit={handleSubmit}>
           <label>
-            지역 코드
-            <input name="regionCode" inputMode="numeric" pattern="[0-9]{5}" defaultValue="11680" required />
+            지역명
+            <input name="regionName" defaultValue="서울특별시 강남구" placeholder="예: 서울 강남구" required />
           </label>
           <label>
             계약년월
@@ -149,7 +150,7 @@ export default function HomePage() {
       <section className="summary" aria-live="polite">
         <div>
           <span>조회 지역</span>
-          <strong>{result.summary?.regionCode || '-'}</strong>
+          <strong>{formatRegionSummary(result.summary)}</strong>
         </div>
         <div>
           <span>계약월</span>
@@ -305,6 +306,21 @@ function formatDealMonth(dealYmd) {
   const month = Number(String(dealYmd).slice(4, 6));
 
   return `${year}년 ${month}월`;
+}
+
+function formatRegionSummary(summary) {
+  const regionName = summary?.regionName && summary.regionName !== '-' ? summary.regionName : '';
+  const regionCode = summary?.regionCode && summary.regionCode !== '-' ? summary.regionCode : '';
+
+  if (!regionName && !regionCode) {
+    return '-';
+  }
+
+  if (regionName && regionCode) {
+    return `${regionName} (${regionCode})`;
+  }
+
+  return regionName || regionCode;
 }
 
 function formatDealAmount(amount) {
