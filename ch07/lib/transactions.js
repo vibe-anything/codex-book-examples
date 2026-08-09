@@ -68,7 +68,7 @@ export async function fetchTransactions(query, env = process.env) {
     };
   }
 
-  // Chapter 8 can replace this branch with the real public-data API request.
+  // 실제 공공데이터 API 호출은 이 자리에서 이어 붙인다.
   if (env.MOCK_API_FAILURE === 'true') {
     return {
       status: 'API_REQUEST_FAILED',
