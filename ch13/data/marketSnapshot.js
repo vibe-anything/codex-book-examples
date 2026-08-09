@@ -9,6 +9,7 @@ export const marketSnapshot = {
       value: 2846.72,
       change: 24.58,
       changePercent: 0.87,
+      intraday: [2822.1, 2828.4, 2825.7, 2836.2, 2832.9, 2841.5, 2839.4, 2846.72],
     },
     {
       code: "KOSDAQ",
@@ -16,6 +17,7 @@ export const marketSnapshot = {
       value: 792.64,
       change: -3.87,
       changePercent: -0.49,
+      intraday: [796.5, 798.2, 795.4, 797.1, 793.8, 791.9, 794.2, 792.64],
     },
   ],
   marketBreadth: {

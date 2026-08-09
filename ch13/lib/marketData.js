@@ -9,6 +9,7 @@ const MARKET_CATEGORIES = new Set(["KOSPI", "KOSDAQ"]);
 const RANKING_SIZE = 5;
 const MINIMUM_COMPLETE_STOCK_ROWS = 1_000;
 const MAX_DATA_AGE_DAYS = 7;
+const INDEX_HISTORY_SIZE = 8;
 
 export const SECTOR_INDEX_MAPPING = [
   { name: "반도체", indexName: "KRX 반도체" },
@@ -81,6 +82,30 @@ function findIndex(items, name, category) {
   }
 
   return { value, change, changePercent };
+}
+
+function buildIndexHistory(items, name, category) {
+  const closesByDate = new Map();
+
+  items.forEach((item) => {
+    if (item.idxNm !== name || item.idxCsf !== category) return;
+
+    const value = toFiniteNumber(item.clpr);
+    if (/^\d{8}$/.test(item.basDt) && value !== null) {
+      closesByDate.set(item.basDt, value);
+    }
+  });
+
+  const values = [...closesByDate]
+    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+    .slice(-INDEX_HISTORY_SIZE)
+    .map(([, value]) => value);
+
+  if (values.length < 2) {
+    throw new Error(`${name} 지수의 최근 종가 흐름이 충분하지 않습니다.`);
+  }
+
+  return values;
 }
 
 function buildRankings(stocks) {
@@ -191,11 +216,13 @@ export function buildMarketSnapshot({
         code: "KOSPI",
         name: "KOSPI",
         ...findIndex(indices, "코스피", "KOSPI시리즈"),
+        intraday: buildIndexHistory(indexItems, "코스피", "KOSPI시리즈"),
       },
       {
         code: "KOSDAQ",
         name: "KOSDAQ",
         ...findIndex(indices, "코스닥", "KOSDAQ시리즈"),
+        intraday: buildIndexHistory(indexItems, "코스닥", "KOSDAQ시리즈"),
       },
     ],
     marketBreadth: {
