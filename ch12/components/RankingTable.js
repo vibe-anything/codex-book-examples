@@ -19,7 +19,7 @@ export function RankingTable({ title, badge, rows, showTurnover = false }) {
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={row.name}>
+            <tr key={row.code || row.name}>
               <td className="rank-number">{index + 1}</td>
               <th scope="row">{row.name}</th>
               <td>{formatPrice(row.price)}</td>

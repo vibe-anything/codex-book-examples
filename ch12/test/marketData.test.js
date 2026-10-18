@@ -1,205 +1,66 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import {
-  buildMarketSnapshot,
-  getMarketSnapshot,
-  SECTOR_INDEX_MAPPING,
-} from "../lib/marketData.js";
-import {
-  MARKET_INDEX_PATH,
-  STOCK_PRICE_PATH,
-} from "../lib/dataGoKr.js";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { buildMarketSnapshot, loadMarketSnapshot, sectorIndices } from '../lib/marketData.js';
+import { marketSnapshot } from '../data/marketSnapshot.js';
 
-const DATA_DATE = "20260730";
-const NOW = new Date("2026-08-03T03:00:00.000Z");
+const date = '20261015';
+const indices = [
+  { basDt: date, idxNm: '코스피', idxCsf: 'KOSPI시리즈', clpr: '2000', vs: '-20', fltRt: '-1' },
+  { basDt: date, idxNm: '코스닥', idxCsf: 'KOSDAQ시리즈', clpr: '700', vs: '7', fltRt: '1' },
+  ...sectorIndices.filter(([, name]) => name).map(([, name]) => ({ basDt: date, idxNm: name, idxCsf: 'KRX시리즈', fltRt: '-.32' })),
+  { basDt: date, idxNm: 'KRX 조선 TOP10 지수', idxCsf: '테마지수', fltRt: '10' },
+  { basDt: date, idxNm: 'KRX 게임 TOP 10 지수', idxCsf: '테마지수', fltRt: '20' },
+];
+const stocks = [
+  { basDt: date, srtnCd: '1', itmsNm: '상승', mrktCtg: 'KOSPI', clpr: '1000', fltRt: '3', trPrc: '200000000' },
+  { basDt: date, srtnCd: '2', itmsNm: '하락', mrktCtg: 'KOSDAQ', clpr: '2000', fltRt: '-5', trPrc: '900000000' },
+];
 
-function makeStockItems(basDt = DATA_DATE) {
-  return Array.from({ length: 12 }, (_, index) => {
-    const changePercent = index < 6 ? 10 - index : -(index - 5);
-    return {
-      basDt,
-      mrktCtg: index % 2 ? "KOSDAQ" : "KOSPI",
-      itmsNm: `테스트종목${String(index + 1).padStart(2, "0")}`,
-      clpr: String(10_000 + index * 1_000),
-      fltRt: String(changePercent),
-      trPrc: String((index + 1) * 100_000_000),
-    };
-  });
-}
-
-function makeIndexItems(basDt = DATA_DATE) {
-  const marketIndices = [
-    {
-      basDt,
-      idxNm: "코스피",
-      idxCsf: "KOSPI시리즈",
-      clpr: "5593.56",
-      vs: "-69.68",
-      fltRt: "-1.23",
-    },
-    {
-      basDt,
-      idxNm: "코스닥",
-      idxCsf: "KOSDAQ시리즈",
-      clpr: "644.78",
-      vs: "-17.9",
-      fltRt: "-2.7",
-    },
-  ];
-  const sectors = SECTOR_INDEX_MAPPING.filter(({ indexName }) => indexName).map(
-    ({ indexName }, index) => ({
-      basDt,
-      idxNm: indexName,
-      idxCsf: "KRX시리즈",
-      clpr: String(1_000 + index),
-      vs: String(index - 4),
-      fltRt: String((index - 4) / 10),
-    }),
-  );
-
-  const previousMarketIndices = marketIndices.map((item) => ({
-    ...item,
-    basDt: "20260729",
-    clpr: String(Number(item.clpr) - 10),
-  }));
-
-  return [
-    ...previousMarketIndices,
-    ...marketIndices,
-    ...sectors,
-    {
-      basDt,
-      idxNm: "KRX 게임 TOP 10 지수",
-      idxCsf: "테마지수",
-      clpr: "600",
-      vs: "24",
-      fltRt: "4",
-    },
-  ];
-}
-
-function assertCompleteFallback(snapshot) {
-  assert.equal(snapshot.isMock, true);
-  assert.equal(snapshot.indices.length, 2);
-  assert.equal(snapshot.sectors.length, 12);
-  assert.equal(snapshot.sectors.filter(({ available }) => available === false).length, 4);
-  assert.equal(snapshot.rankings.gainers.length, 5);
-  assert.equal(snapshot.rankings.losers.length, 5);
-  assert.equal(snapshot.rankings.turnover.length, 5);
-}
-
-test("실제 API 항목으로 화면 스냅샷을 계산한다", () => {
-  const snapshot = buildMarketSnapshot({
-    stockItems: makeStockItems(),
-    indexItems: makeIndexItems(),
-    now: NOW,
-    minimumStockRows: 10,
-  });
-
-  assert.equal(snapshot.isMock, false);
-  assert.equal(snapshot.asOf, "2026.07.30 종가");
-  assert.deepEqual(snapshot.indices.map(({ code }) => code), ["KOSPI", "KOSDAQ"]);
-  assert.deepEqual(snapshot.indices[0].recentCloses, [5583.56, 5593.56]);
-  assert.deepEqual(snapshot.marketBreadth, {
-    totalStocks: 12,
-    stocksUpThreePercent: 6,
-  });
-  assert.equal(snapshot.rankings.gainers.length, 5);
-  assert.equal(snapshot.rankings.losers.length, 5);
-  assert.equal(snapshot.rankings.turnover[0].turnover, 12);
-  assert.deepEqual(snapshot.sectors.map(({ name }) => name), [
-    "반도체",
-    "자동차",
-    "은행",
-    "증권",
-    "건설",
-    "철강",
-    "운송",
-    "방송통신",
-    "조선",
-    "게임",
-    "2차전지",
-    "화장품",
-  ]);
-  assert.equal(snapshot.sectors.filter(({ available }) => available).length, 8);
-  assert.equal(snapshot.sectors.find(({ name }) => name === "게임").changePercent, null);
+test('실제 시세의 단위, 순위, 시장 열기와 8개 KRX 업종을 변환한다', () => {
+  const result = buildMarketSnapshot(indices, stocks);
+  assert.equal(result.isMock, false);
+  assert.equal(result.asOf, '2026.10.15 종가');
+  assert.deepEqual(result.sectors.map(row => row.name), marketSnapshot.sectors.slice(0, 8).map(row => row.name));
+  assert.equal(result.sectors[0].changePercent, -0.32);
+  assert.deepEqual(result.marketBreadth, { totalStocks: 2, stocksUpThreePercent: 1 });
+  assert.equal(result.rankings.gainers[0].name, '상승');
+  assert.equal(result.rankings.losers[0].name, '하락');
+  assert.equal(result.rankings.turnover[0].turnover, 9);
+  assert.equal(result.indices[0].value, 2000);
 });
 
-test("업종은 같은 이름이어도 KRX시리즈 지수만 사용한다", () => {
-  const indexItems = makeIndexItems().map((item) =>
-    item.idxNm === "KRX 반도체" ? { ...item, idxCsf: "테마지수" } : item,
-  );
-
-  assert.throws(
-    () =>
-      buildMarketSnapshot({
-        stockItems: makeStockItems(),
-        indexItems,
-        now: NOW,
-        minimumStockRows: 10,
-      }),
-    /KRX 반도체 지수 응답이 비어 있거나 올바르지 않습니다/,
-  );
+test('업종의 누락, 빈 값, 다른 시리즈를 다른 지수나 예시 값으로 대체하지 않는다', () => {
+  const changed = indices.map(row => row.idxNm === 'KRX 반도체' ? { ...row, idxCsf: '테마지수' }
+    : row.idxNm === 'KRX 은행' ? { ...row, fltRt: '' } : row);
+  const result = buildMarketSnapshot(changed, stocks);
+  assert.equal(result.sectors.length, 6);
+  assert.ok(!result.sectors.some(row => ['반도체', '은행', '조선', '게임', '2차전지', '화장품'].includes(row.name)));
 });
 
-test("지수 응답에 거래일이 하나뿐이면 미니 차트 칸만 비운다", () => {
-  const snapshot = buildMarketSnapshot({
-    stockItems: makeStockItems(),
-    indexItems: makeIndexItems().filter((item) => item.basDt === DATA_DATE),
-    now: NOW,
-    minimumStockRows: 10,
-  });
-
-  assert.equal(snapshot.isMock, false);
-  assert.equal(snapshot.indices[0].value, 5593.56);
-  assert.equal(snapshot.indices[0].recentCloses, null);
-  assert.equal(snapshot.indices[1].recentCloses, null);
+test('지수 그래프는 날짜순 실제 종가를 사용한다', () => {
+  const result = buildMarketSnapshot([...indices, { ...indices[0], basDt: '20261014', clpr: '2020' }], stocks);
+  assert.deepEqual(result.indices[0].intraday, [2020, 2000]);
+  assert.match(result.indices[0].trendLabel, /일별 종가/);
 });
 
-test("API 호출 실패 시 예시 데이터로 돌아간다", async () => {
-  const snapshot = await getMarketSnapshot({
-    fetchItems: async () => {
-      throw new Error("network failure");
-    },
-    now: NOW,
-    onFallback: () => {},
+test('종목 페이지를 모두 받아 기준일을 맞춘다', async () => {
+  const calls = [];
+  const result = await loadMarketSnapshot(async (path, params) => {
+    calls.push([path, params]);
+    return path.includes('Index') ? { totalCount: indices.length, items: { item: indices } }
+      : { totalCount: 2, items: { item: [stocks[Number(params.pageNo) - 1]] } };
   });
-
-  assertCompleteFallback(snapshot);
+  assert.equal(result.isMock, false);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[1][1].basDt, date);
 });
 
-test("빈 응답 시 예시 데이터로 돌아간다", async () => {
-  const snapshot = await getMarketSnapshot({
-    fetchItems: async () => [],
-    now: NOW,
-    onFallback: () => {},
-  });
-
-  assertCompleteFallback(snapshot);
-});
-
-test("두 API의 최신 기준일이 다르면 갱신 지연으로 보고 예시 데이터를 쓴다", async () => {
-  const snapshot = await getMarketSnapshot({
-    fetchItems: async (pathname) =>
-      pathname === STOCK_PRICE_PATH
-        ? makeStockItems("20260730")
-        : makeIndexItems("20260729"),
-    now: NOW,
-    onFallback: () => {},
-  });
-
-  assertCompleteFallback(snapshot);
-});
-
-test("허용 범위보다 오래된 응답이면 예시 데이터로 돌아간다", async () => {
-  const snapshot = await getMarketSnapshot({
-    fetchItems: async (pathname) =>
-      pathname === MARKET_INDEX_PATH
-        ? makeIndexItems("20260701")
-        : makeStockItems("20260701"),
-    now: NOW,
-    onFallback: () => {},
-  });
-
-  assertCompleteFallback(snapshot);
+test('통신 오류, 빈 응답, 기준일 불일치, 잘못된 숫자는 전체 예시 데이터로 복귀한다', async () => {
+  assert.equal(await loadMarketSnapshot(async () => { throw new Error('timeout'); }), marketSnapshot);
+  assert.equal(await loadMarketSnapshot(async () => ({ items: { item: [] } })), marketSnapshot);
+  for (const rows of [[{ ...stocks[0], basDt: '20261014' }], [{ ...stocks[0], clpr: '' }]]) {
+    assert.equal(await loadMarketSnapshot(async path => path.includes('Index')
+      ? { totalCount: indices.length, items: { item: indices } }
+      : { totalCount: rows.length, items: { item: rows } }), marketSnapshot);
+  }
 });

@@ -1,177 +1,96 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { changeTone, formatPrice, formatSigned } from "@/lib/market";
 
-const WATCHLIST_STORAGE_KEY = "market-dashboard-watchlist";
-const SEARCH_RESULT_LIMIT = 8;
-
-function readStoredCodes(stockByCode) {
-  try {
-    const storedValue = JSON.parse(
-      window.localStorage.getItem(WATCHLIST_STORAGE_KEY) ?? "[]",
-    );
-
-    if (!Array.isArray(storedValue)) return [];
-
-    return storedValue
-      .map(String)
-      .filter((code, index, codes) =>
-        stockByCode.has(code) && codes.indexOf(code) === index,
-      );
-  } catch {
-    return [];
-  }
-}
+const STORAGE_KEY = "market-dashboard:watchlist";
 
 export function Watchlist({ stocks }) {
+  const [codes, setCodes] = useState([]);
+  const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
-  const [favoriteCodes, setFavoriteCodes] = useState([]);
-  const [isStorageReady, setIsStorageReady] = useState(false);
-  const stockByCode = useMemo(
-    () => new Map(stocks.map((stock) => [stock.code, stock])),
-    [stocks],
-  );
+  const [storageError, setStorageError] = useState("");
 
   useEffect(() => {
-    setFavoriteCodes(readStoredCodes(stockByCode));
-    setIsStorageReady(true);
-  }, [stockByCode]);
-
-  useEffect(() => {
-    if (!isStorageReady) return;
     try {
-      window.localStorage.setItem(
-        WATCHLIST_STORAGE_KEY,
-        JSON.stringify(favoriteCodes),
-      );
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      if (Array.isArray(saved)) {
+        setCodes([...new Set(saved.filter(code => typeof code === "string"))]);
+      }
     } catch {
-      // 저장소 사용이 제한된 환경에서도 화면 기능은 그대로 유지한다.
+      setStorageError("저장된 관심 종목을 불러오지 못했습니다. 브라우저 저장 설정을 확인해 주세요.");
     }
-  }, [favoriteCodes, isStorageReady]);
+    setReady(true);
+  }, []);
 
-  const normalizedQuery = query.trim().toLocaleLowerCase("ko-KR");
-  const searchResults = useMemo(() => {
-    if (!normalizedQuery) return [];
-
-    return stocks
-      .filter((stock) =>
-        stock.name.toLocaleLowerCase("ko-KR").includes(normalizedQuery) ||
-        stock.code.includes(normalizedQuery),
-      )
-      .slice(0, SEARCH_RESULT_LIMIT);
-  }, [normalizedQuery, stocks]);
-  const favoriteStocks = favoriteCodes
-    .map((code) => stockByCode.get(code))
-    .filter(Boolean);
-
-  function toggleFavorite(code) {
-    setFavoriteCodes((currentCodes) =>
-      currentCodes.includes(code)
-        ? currentCodes.filter((currentCode) => currentCode !== code)
-        : [...currentCodes, code],
-    );
+  function toggle(code) {
+    const next = codes.includes(code) ? codes.filter(item => item !== code) : [...codes, code];
+    setCodes(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      setStorageError("");
+    } catch {
+      setStorageError("관심 종목을 저장하지 못했습니다. 새로 고침하면 변경 사항이 사라질 수 있습니다.");
+    }
   }
+
+  const stocksByCode = new Map(stocks.map(stock => [stock.code, stock]));
+  const search = query.trim().toLocaleLowerCase();
+  const matches = search ? [...stocksByCode.values()].filter(stock =>
+    stock.name.toLocaleLowerCase().includes(search) || stock.code.toLocaleLowerCase().includes(search)
+  ) : [];
 
   return (
     <section className="watchlist" aria-labelledby="watchlist-title">
       <div className="section-heading watchlist-heading">
-        <div>
-          <h2 id="watchlist-title">관심 종목</h2>
-          <p className="watchlist-caption">내가 고른 종목을 빠르게 확인하세요</p>
-        </div>
-        <div className="watchlist-search">
-          <label className="screen-reader-only" htmlFor="watchlist-query">
-            관심 종목 검색
-          </label>
-          <input
-            id="watchlist-query"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="종목명 또는 종목코드 검색"
-            autoComplete="off"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-controls="watchlist-search-results"
-            aria-expanded={Boolean(normalizedQuery)}
-          />
-          {normalizedQuery && (
-            <div
-              className="watchlist-search-results panel"
-              id="watchlist-search-results"
-            >
-              {searchResults.length > 0 ? (
-                <ul>
-                  {searchResults.map((stock) => {
-                    const isFavorite = favoriteCodes.includes(stock.code);
-
-                    return (
-                      <li key={stock.code}>
-                        <button
-                          type="button"
-                          onClick={() => toggleFavorite(stock.code)}
-                          aria-pressed={isFavorite}
-                        >
-                          <span className="search-result-stock">
-                            <strong>{stock.name}</strong>
-                            <span>{stock.code}</span>
-                          </span>
-                          <span className={isFavorite ? "remove-label" : "add-label"}>
-                            {isFavorite ? "해제" : "추가"}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="watchlist-no-results">검색 결과가 없습니다.</p>
-              )}
-            </div>
-          )}
-        </div>
+        <h2 id="watchlist-title">관심 종목</h2>
+        <span className="eyebrow">수집된 시세 기준</span>
       </div>
-
-      {favoriteStocks.length > 0 ? (
-        <div className="watchlist-grid">
-          {favoriteStocks.map((stock) => {
-            const tone = changeTone(stock.changePercent);
-
-            return (
-              <article className="watchlist-card panel" key={stock.code}>
-                <div className="watchlist-card-heading">
-                  <div>
-                    <h3>{stock.name}</h3>
-                    <p>{stock.code}</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="watchlist-remove"
-                    onClick={() => toggleFavorite(stock.code)}
-                    aria-label={`${stock.name} 관심 종목 해제`}
-                  >
-                    ×
+      <div className="watchlist-search panel">
+        <label htmlFor="stock-search">관심 종목 추가</label>
+        <input id="stock-search" type="search" placeholder="종목명 또는 종목 코드 검색"
+          value={query} onChange={event => setQuery(event.target.value)} disabled={!ready}
+          aria-describedby="stock-search-help" aria-controls="stock-search-results" />
+        <p id="stock-search-help">종목을 검색한 뒤 추가 버튼을 눌러 주세요.</p>
+        {search && (
+          <div id="stock-search-results" className="watchlist-results">
+            <p role="status">검색 결과 {matches.length}개</p>
+            {matches.length === 0 && <p>일치하는 종목이 없습니다. 다른 종목명이나 코드를 입력해 주세요.</p>}
+            <ul>
+              {matches.map(stock => (
+                <li key={stock.code}>
+                  <span><strong>{stock.name}</strong>{!stock.code.startsWith("mock:") && <small>{stock.code}</small>}</span>
+                  <span>{formatPrice(stock.price)}</span>
+                  <span className={`rate-badge ${changeTone(stock.changePercent)}`}>{formatSigned(stock.changePercent, 2)}%</span>
+                  <button type="button" onClick={() => toggle(stock.code)} aria-label={`${stock.name} 관심 종목 ${codes.includes(stock.code) ? "해제" : "추가"}`}>
+                    {codes.includes(stock.code) ? "해제" : "추가"}
                   </button>
-                </div>
-                <div className="watchlist-price-row">
-                  <div>
-                    <span>현재가</span>
-                    <strong>{formatPrice(stock.price)}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      {storageError && <p className="watchlist-notice" role="status">{storageError}</p>}
+      {!ready ? <p className="watchlist-empty panel">관심 종목을 불러오는 중입니다.</p>
+        : codes.length === 0 ? <p className="watchlist-empty panel">관심 종목이 없습니다. 위 검색창에서 종목을 검색해 추가해 보세요.</p>
+          : <ul className="watchlist-cards">
+            {codes.map(code => {
+              const stock = stocksByCode.get(code);
+              return (
+                <li className="watchlist-card panel" key={code}>
+                  <div className="watchlist-card-heading">
+                    <h3>{stock?.name || code.replace(/^mock:/, "")}</h3>
+                    <button type="button" onClick={() => toggle(code)} aria-label={`${stock?.name || code} 관심 종목 해제`}>해제</button>
                   </div>
-                  <span className={`watchlist-rate ${tone}`}>
-                    {formatSigned(stock.changePercent, 2)}%
-                  </span>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="watchlist-empty panel">
-          <p>오른쪽 검색창에서 종목명이나 종목코드를 검색해 관심 종목을 추가해 보세요.</p>
-        </div>
-      )}
+                  {stock ? <>
+                    <p className={`watchlist-price ${changeTone(stock.changePercent)}`}>{formatPrice(stock.price)}</p>
+                    <span className={`rate-badge ${changeTone(stock.changePercent)}`}>{formatSigned(stock.changePercent, 2)}%</span>
+                  </> : <p className="watchlist-notice">현재 수집된 시세가 없습니다.</p>}
+                </li>
+              );
+            })}
+          </ul>}
     </section>
   );
 }

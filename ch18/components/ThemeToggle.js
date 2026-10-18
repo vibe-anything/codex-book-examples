@@ -1,90 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { isTheme, resolveTheme, THEME_STORAGE_KEY } from "@/lib/theme";
+import { useEffect, useRef, useState } from "react";
+import { normalizeTheme, resolveTheme, THEME_STORAGE_KEY } from "@/lib/theme";
 
-const DARK_MODE_QUERY = "(prefers-color-scheme: dark)";
-
-function readStoredTheme() {
-  try {
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return isTheme(storedTheme) ? storedTheme : null;
-  } catch {
-    return null;
-  }
-}
-
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
-}
-
-export function ThemeToggle() {
-  const [theme, setTheme] = useState(null);
+export default function ThemeToggle() {
+  const selectedRef = useRef("system");
+  const [preference, setPreference] = useState("system");
 
   useEffect(() => {
-    const systemPreference = window.matchMedia(DARK_MODE_QUERY);
-
-    function renderTheme(nextTheme) {
-      applyTheme(nextTheme);
-      setTheme(nextTheme);
-    }
-
-    function syncStoredOrSystemTheme() {
-      renderTheme(resolveTheme(readStoredTheme(), systemPreference.matches));
-    }
-
-    function handleSystemChange(event) {
-      if (!readStoredTheme()) renderTheme(resolveTheme(null, event.matches));
-    }
-
-    function handleStorageChange(event) {
-      if (event.key === THEME_STORAGE_KEY) syncStoredOrSystemTheme();
-    }
-
-    syncStoredOrSystemTheme();
-    systemPreference.addEventListener("change", handleSystemChange);
-    window.addEventListener("storage", handleStorageChange);
-
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    let selected = "system";
+    try { selected = normalizeTheme(localStorage.getItem(THEME_STORAGE_KEY)); } catch {}
+    selectedRef.current = selected;
+    setPreference(selected);
+    const apply = () => {
+      document.documentElement.dataset.theme = resolveTheme(selectedRef.current, media.matches);
+    };
+    const sync = (event) => {
+      if (event.key === THEME_STORAGE_KEY || event.key === null) {
+        selected = normalizeTheme(event.newValue);
+        selectedRef.current = selected;
+        setPreference(selected);
+        apply();
+      }
+    };
+    apply();
+    media.addEventListener("change", apply);
+    window.addEventListener("storage", sync);
     return () => {
-      systemPreference.removeEventListener("change", handleSystemChange);
-      window.removeEventListener("storage", handleStorageChange);
+      media.removeEventListener("change", apply);
+      window.removeEventListener("storage", sync);
     };
   }, []);
 
-  function chooseTheme(nextTheme) {
-    try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-    } catch {
-      // 저장소가 제한되어도 현재 탭의 화면 모드는 바꿀 수 있다.
-    }
-
-    applyTheme(nextTheme);
-    setTheme(nextTheme);
+  function changeTheme(event) {
+    const selected = normalizeTheme(event.target.value);
+    selectedRef.current = selected;
+    setPreference(selected);
+    document.documentElement.dataset.theme = resolveTheme(
+      selected, window.matchMedia("(prefers-color-scheme: dark)").matches,
+    );
+    try { localStorage.setItem(THEME_STORAGE_KEY, selected); } catch {}
   }
 
   return (
-    <div className="theme-toggle" role="group" aria-label="화면 모드">
-      <button
-        type="button"
-        className="theme-toggle-option"
-        onClick={() => chooseTheme("light")}
-        aria-label="라이트 모드 사용"
-        aria-pressed={theme === "light"}
-      >
-        <span aria-hidden="true">☀︎</span>
-        <span>라이트</span>
-      </button>
-      <button
-        type="button"
-        className="theme-toggle-option"
-        onClick={() => chooseTheme("dark")}
-        aria-label="다크 모드 사용"
-        aria-pressed={theme === "dark"}
-      >
-        <span aria-hidden="true">◐</span>
-        <span>다크</span>
-      </button>
+    <div className="theme-toolbar">
+      <label htmlFor="screen-theme">화면 모드</label>
+      <select id="screen-theme" value={preference} onChange={changeTheme}>
+        <option value="system">시스템 설정</option>
+        <option value="light">라이트</option>
+        <option value="dark">다크</option>
+      </select>
     </div>
   );
 }

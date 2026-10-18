@@ -1,115 +1,93 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import {
-  DAILY_QUOTES_TABLE,
-  fetchLatestDailyQuotes,
-} from "../lib/supabaseMarketData.js";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readLatestDailyPrices } from '../lib/supabaseMarketData.js';
+import { buildDailyPriceSnapshot, loadMarketSnapshot } from '../lib/marketData.js';
+import { marketSnapshot } from '../data/marketSnapshot.js';
 
-function response(rows, contentRange = "") {
-  return {
-    ok: true,
-    status: 200,
-    headers: {
-      get: (name) =>
-        name.toLowerCase() === "content-range" ? contentRange : null,
-    },
-    json: async () => rows,
-  };
-}
+const date = '2026-10-15';
+const row = { trade_date: date, stock_code: '005930', stock_name: '삼성전자', close_price: '70000', change_percent: '3', trading_value: '200000000' };
+const reply = (rows, range = '0-0/1') => new Response(JSON.stringify(rows), { headers: { 'content-range': range } });
+const options = { supabaseUrl: 'https://example.supabase.co', publishableKey: 'sb_publishable_test' };
 
-test("최신 기준일을 찾은 뒤 그 날짜의 시세만 GET으로 읽는다", async () => {
+test('최신 날짜를 고정하고 전체 종목을 GET으로 페이지 조회한다', async () => {
   const calls = [];
-  const quoteRows = [
-    {
-      trade_date: "2026-07-30",
-      stock_code: "005930",
-      stock_name: "삼성전자",
-      close_price: "73200",
-      change_rate: "1.81",
-      trading_value: "1482000000000",
-    },
-  ];
-  const fetchImpl = async (url, options) => {
-    calls.push({ url, options });
-    return calls.length === 1
-      ? response([{ trade_date: "2026-07-30" }])
-      : response(quoteRows, "0-0/1");
-  };
-
-  const result = await fetchLatestDailyQuotes({
-    fetchImpl,
-    supabaseUrl: "https://example.supabase.co",
-    publishableKey: "sb_publishable_test",
-    timeoutMs: 100,
-  });
-
-  assert.deepEqual(result, { tradeDate: "2026-07-30", rows: quoteRows });
-  assert.equal(calls.length, 2);
-  assert.ok(calls.every((call) => call.options.method === "GET"));
-  assert.ok(
-    calls.every(
-      (call) => call.options.headers.apikey === "sb_publishable_test",
-    ),
-  );
-  assert.ok(
-    calls.every((call) => !("Authorization" in call.options.headers)),
-  );
-  assert.equal(
-    new URL(calls[0].url).pathname,
-    `/rest/v1/${DAILY_QUOTES_TABLE}`,
-  );
-  assert.equal(
-    new URL(calls[0].url).searchParams.get("order"),
-    "trade_date.desc",
-  );
-  assert.equal(
-    new URL(calls[1].url).searchParams.get("trade_date"),
-    "eq.2026-07-30",
-  );
-});
-
-test("최신 기준일 시세가 1,000행을 넘으면 다음 페이지도 읽는다", async () => {
-  const rows = Array.from({ length: 1_001 }, (_, index) => ({
-    trade_date: "2026-07-30",
-    stock_code: String(index).padStart(6, "0"),
-    stock_name: `종목${index}`,
-    close_price: "1000",
-    change_rate: "0",
-    trading_value: "1000000",
-  }));
-  const offsets = [];
-  const fetchImpl = async (url) => {
-    const parsedUrl = new URL(url);
-    if (parsedUrl.searchParams.get("select") === "trade_date") {
-      return response([{ trade_date: "2026-07-30" }]);
+  const rows = Array.from({ length: 1001 }, (_, i) => ({ ...row, stock_code: String(i).padStart(6, '0') }));
+  const result = await readLatestDailyPrices({ ...options, fetchImpl: async (url, init) => {
+    calls.push({ url, init });
+    assert.equal(init.method, 'GET');
+    assert.equal(init.headers.apikey, options.publishableKey);
+    assert.equal(url.pathname, '/rest/v1/daily_prices');
+    if (url.searchParams.get('select') === 'trade_date') {
+      assert.equal(url.searchParams.get('order'), 'trade_date.desc');
+      return reply([{ trade_date: date }]);
     }
-
-    const offset = Number(parsedUrl.searchParams.get("offset"));
-    offsets.push(offset);
-    const pageRows = rows.slice(offset, offset + 1_000);
-    const end = offset + pageRows.length - 1;
-    return response(pageRows, `${offset}-${end}/1001`);
-  };
-
-  const result = await fetchLatestDailyQuotes({
-    fetchImpl,
-    supabaseUrl: "https://example.supabase.co",
-    publishableKey: "sb_publishable_test",
-    timeoutMs: 100,
-  });
-
-  assert.equal(result.rows.length, 1_001);
-  assert.deepEqual(offsets, [0, 1_000]);
+    assert.equal(url.searchParams.get('trade_date'), `eq.${date}`);
+    const offset = Number(url.searchParams.get('offset'));
+    return reply(rows.slice(offset, offset + 1000), `${offset}-${Math.min(offset + 999, 1000)}/1001`);
+  } });
+  assert.equal(calls.length, 3);
+  const snapshot = buildDailyPriceSnapshot(result);
+  assert.equal(snapshot.stocks.length, 1001);
+  assert.equal(snapshot.asOf, '2026.10.15 종가');
+  assert.equal(snapshot.rankings.turnover[0].turnover, 2);
+  assert.equal(snapshot.marketBreadth.stocksUpThreePercent, 1001);
+  assert.deepEqual(snapshot.indices, []);
 });
 
-test("Supabase에 데이터가 없으면 폴백할 수 있도록 오류를 낸다", async () => {
-  await assert.rejects(
-    fetchLatestDailyQuotes({
-      fetchImpl: async () => response([]),
-      supabaseUrl: "https://example.supabase.co",
-      publishableKey: "sb_publishable_test",
-      timeoutMs: 100,
-    }),
-    /데이터가 없습니다/,
-  );
+test('Supabase 성공 시에도 시장 요약은 기존 API에서 읽고 종목만 대체한다', async () => {
+  const calls = [];
+  const indexDate = '20261014';
+  const indices = [
+    { basDt: indexDate, idxNm: '코스피', idxCsf: 'KOSPI시리즈', clpr: '2000', vs: '20', fltRt: '1' },
+    { basDt: indexDate, idxNm: '코스닥', idxCsf: 'KOSDAQ시리즈', clpr: '700', vs: '7', fltRt: '1' },
+    { basDt: indexDate, idxNm: 'KRX 반도체', idxCsf: 'KRX시리즈', fltRt: '2' },
+  ];
+  const result = await loadMarketSnapshot(async (path, params) => {
+    calls.push(path);
+    if (path.includes('Index')) return { totalCount: indices.length, items: { item: indices } };
+    assert.equal(params.basDt, indexDate);
+    return { totalCount: 1, items: { item: [{ basDt: indexDate, srtnCd: '000001', itmsNm: 'API 종목', mrktCtg: 'KOSPI', clpr: '1000', fltRt: '-1', trPrc: '100000000' }] } };
+  }, async () => ({ date, rows: [row] }));
+  assert.equal(calls.length, 2);
+  assert.equal(result.source, 'supabase');
+  assert.equal(result.isMock, false);
+  assert.equal(result.marketIsMock, false);
+  assert.equal(result.asOf, '2026.10.15 종가');
+  assert.equal(result.marketAsOf, '2026.10.14 종가');
+  assert.equal(result.indices[0].value, 2000);
+  assert.equal(result.sectors[0].changePercent, 2);
+  assert.deepEqual(result.marketBreadth, { totalStocks: 1, stocksUpThreePercent: 0 });
+  assert.equal(result.stocks[0].code, row.stock_code);
+  assert.equal(result.rankings.gainers[0].name, row.stock_name);
+});
+
+test('API 실패 시에도 Supabase 종목과 시장 요약 예시를 함께 유지한다', async () => {
+  const result = await loadMarketSnapshot(async () => { throw new Error('API 실패'); }, async () => ({ date, rows: [row] }));
+  assert.equal(result.isMock, false);
+  assert.equal(result.marketIsMock, true);
+  assert.equal(result.stocks[0].code, row.stock_code);
+  assert.deepEqual(result.indices, marketSnapshot.indices);
+  assert.deepEqual(result.sectors, marketSnapshot.sectors);
+  assert.deepEqual(result.marketBreadth, marketSnapshot.marketBreadth);
+});
+
+test('빈 테이블, HTTP 오류, 불완전한 목록은 읽기 오류로 처리한다', async () => {
+  for (const fetchImpl of [
+    async () => reply([]),
+    async () => new Response('', { status: 403 }),
+    async url => url.searchParams.get('select') === 'trade_date' ? reply([{ trade_date: date }]) : reply([], '*/2'),
+  ]) {
+    await assert.rejects(readLatestDailyPrices({ ...options, fetchImpl }));
+  }
+});
+
+test('Supabase 실패 후 API를 시도하고 둘 다 실패할 때만 예시를 반환한다', async () => {
+  let attempts = 0;
+  const result = await loadMarketSnapshot(async () => { attempts++; throw new Error('API 실패'); }, async () => { throw new Error('DB 실패'); });
+  assert.equal(attempts, 1);
+  assert.equal(result, marketSnapshot);
+  await assert.rejects(readLatestDailyPrices({ supabaseUrl: '', publishableKey: '' }));
+  for (const rows of [[{ ...row, close_price: '' }], [row, row], [{ ...row, trade_date: '2026-10-14' }]]) {
+    assert.throws(() => buildDailyPriceSnapshot({ date, rows }));
+  }
 });

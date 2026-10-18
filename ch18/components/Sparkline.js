@@ -1,9 +1,4 @@
 export function Sparkline({ values, tone, label, indexCode }) {
-  // 지수 응답에 거래일이 하나뿐이면 선을 그릴 수 없다. 이 칸만 비우고 카드의
-  // 나머지는 실제 값으로 그린다.
-  if (!Array.isArray(values) || values.length < 2) return null;
-  if (!values.every((value) => Number.isFinite(value))) return null;
-
   const width = 220;
   const height = 54;
   const padding = 3;

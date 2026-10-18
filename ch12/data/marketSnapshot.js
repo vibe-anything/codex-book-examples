@@ -1,6 +1,5 @@
 export const marketSnapshot = {
-  asOf: "예시 종가",
-  dataDate: null,
+  asOf: "2026.07.31 15:30",
   isMock: true,
   indices: [
     {
@@ -9,7 +8,7 @@ export const marketSnapshot = {
       value: 2846.72,
       change: 24.58,
       changePercent: 0.87,
-      recentCloses: [2822.1, 2828.4, 2825.7, 2836.2, 2832.9, 2841.5, 2839.4, 2846.72],
+      intraday: [2822.1, 2828.4, 2825.7, 2836.2, 2832.9, 2841.5, 2839.4, 2846.72],
     },
     {
       code: "KOSDAQ",
@@ -17,7 +16,7 @@ export const marketSnapshot = {
       value: 792.64,
       change: -3.87,
       changePercent: -0.49,
-      recentCloses: [796.5, 798.2, 795.4, 797.1, 793.8, 791.9, 794.2, 792.64],
+      intraday: [796.5, 798.2, 795.4, 797.1, 793.8, 791.9, 794.2, 792.64],
     },
   ],
   marketBreadth: {
@@ -25,18 +24,18 @@ export const marketSnapshot = {
     stocksUpThreePercent: 421,
   },
   sectors: [
-    { name: "반도체", changePercent: 2.84, available: true },
-    { name: "자동차", changePercent: 1.42, available: true },
-    { name: "은행", changePercent: 0.63, available: true },
-    { name: "증권", changePercent: 3.18, available: true },
-    { name: "건설", changePercent: -0.74, available: true },
-    { name: "철강", changePercent: -1.36, available: true },
-    { name: "운송", changePercent: 0.21, available: true },
-    { name: "방송통신", changePercent: -0.18, available: true },
-    { name: "조선", changePercent: null, available: false },
-    { name: "게임", changePercent: null, available: false },
-    { name: "2차전지", changePercent: null, available: false },
-    { name: "화장품", changePercent: null, available: false },
+    { name: "반도체", changePercent: 2.84 },
+    { name: "자동차", changePercent: 1.42 },
+    { name: "은행", changePercent: 0.63 },
+    { name: "증권", changePercent: 3.18 },
+    { name: "건설", changePercent: -0.74 },
+    { name: "철강", changePercent: -1.36 },
+    { name: "운송", changePercent: 0.21 },
+    { name: "방송통신", changePercent: -0.18 },
+    { name: "조선", changePercent: 2.09 },
+    { name: "게임", changePercent: -2.47 },
+    { name: "2차전지", changePercent: -3.12 },
+    { name: "화장품", changePercent: 1.76 },
   ],
   rankings: {
     gainers: [
