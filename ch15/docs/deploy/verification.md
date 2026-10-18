@@ -19,7 +19,7 @@
 | 환경변수 계약 | PASS | 코드 요구 이름 3개 = `.env.sample` 3개 = Vercel Production 등록 3개, 세 집합이 완전 일치 | 없음 |
 | Git 비밀 검사 | PASS | 차단 0건. 검토 후보 3건은 실제 키 지문과 대조해 전부 오탐으로 확인 | 없음 |
 
-- 공유 대상 SHA: `20b1fec` (`fix: 공공데이터포털 API 타임아웃을 실측에 맞춰 늘리고 오류를 구분한다`)
+- 검증 대상 SHA: `20b1fec` (`fix: 공공데이터포털 API 타임아웃을 실측에 맞춰 늘리고 오류를 구분한다`)
 - 배포 SHA: 일치
 - 대표 주소: https://codex-vercel-example.vercel.app
 - 로그 관찰 구간: 배포 시각부터 검증 시각까지

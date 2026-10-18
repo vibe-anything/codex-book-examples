@@ -13,7 +13,7 @@
   결과를 보고한다.
 - 표시·계산 로직을 바꾸면 반드시 `npm test`를 실행한다. 이 명령의 Node 테스트와
   Next.js 프로덕션 빌드가 모두 성공해야 한다.
-- 배포 준비 확인이나 프로덕션 공유 전 최종 검수에는 `$verify-market-dashboard` Skill을
+- 배포 후 점검이나 프로덕션 최종 검수에는 `$verify-market-dashboard` Skill을
   사용한다. 이 Skill은 읽기 전용 검증용이며 기능 구현, 자동 수정, 실제 배포,
   환경변수 값 조회에 사용하지 않는다.
 - 테스트 실패, 빌드 실패, Skill의 WARNING·BLOCKED를 숨기지 말고 원인과 미검증 범위를

@@ -228,7 +228,7 @@ npm test
 
 ### Vercel 프로덕션 롤백
 
-배포를 공유하기 전에는 `$verify-market-dashboard` Skill로 최신 Production 배포의
+배포한 뒤에는 `$verify-market-dashboard` Skill로 최신 Production 배포의
 Ready 상태, Git SHA, 실제 화면, 최근 반복 5xx, 환경변수 이름 계약과 비밀 노출을 읽기
 전용으로 검사한다.
 
