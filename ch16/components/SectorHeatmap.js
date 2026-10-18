@@ -1,10 +1,6 @@
 import { formatSigned, sectorToneClass } from "@/lib/market";
 
 export function SectorHeatmap({ sectors }) {
-  const availableSectors = sectors.filter(
-    (sector) => sector.available !== false && Number.isFinite(sector.changePercent),
-  );
-
   return (
     <section aria-labelledby="sector-title">
       <div className="section-heading">
@@ -16,11 +12,8 @@ export function SectorHeatmap({ sectors }) {
         </div>
       </div>
       <div className="sector-grid">
-        {availableSectors.map((sector) => (
-          <article
-            className={`sector-tile ${sectorToneClass(sector.changePercent)}`}
-            key={sector.name}
-          >
+        {sectors.map((sector) => (
+          <article className={`sector-tile ${sectorToneClass(sector.changePercent)}`} key={sector.name}>
             <h3>{sector.name}</h3>
             <p>{formatSigned(sector.changePercent, 2)}%</p>
           </article>

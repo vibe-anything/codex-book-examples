@@ -6,5 +6,3 @@
 npm install
 npm run dev
 ```
-
-생성 환경: codex-cli 0.146.0, 2026-08-02.

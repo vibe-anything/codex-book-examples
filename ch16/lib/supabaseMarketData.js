@@ -1,160 +1,43 @@
-export const SUPABASE_URL_ENV = "NEXT_PUBLIC_SUPABASE_URL";
-export const SUPABASE_PUBLISHABLE_KEY_ENV =
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY";
-export const DAILY_QUOTES_TABLE = "daily_quotes";
-
-const PAGE_SIZE = 1_000;
-const DEFAULT_TIMEOUT_MS = 8_000;
-
-function requireEnvironmentValue(name) {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new Error(`${name} 환경 변수가 없습니다.`);
-  }
-
-  return value;
-}
-
-function getSupabaseRestUrl(baseUrl, searchParams) {
-  let url;
-
-  try {
-    url = new URL(`/rest/v1/${DAILY_QUOTES_TABLE}`, baseUrl);
-  } catch {
-    throw new Error(`${SUPABASE_URL_ENV} 형식이 올바르지 않습니다.`);
-  }
-
-  Object.entries(searchParams).forEach(([name, value]) => {
-    url.searchParams.set(name, String(value));
-  });
-
-  return url;
-}
-
-async function withTimeout(promise, timeoutMs) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(
-      () => reject(new Error("Supabase 응답 시간 초과")),
-      timeoutMs,
-    );
-  });
-
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function readRows(
-  fetchImpl,
-  url,
-  publishableKey,
-  timeoutMs,
-  headers = {},
-) {
-  const response = await withTimeout(
-    Promise.resolve().then(() =>
-      fetchImpl(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          apikey: publishableKey,
-          ...headers,
-        },
-        next: { revalidate: 60 * 60 },
-        signal: AbortSignal.timeout(timeoutMs),
-      }),
-    ),
-    timeoutMs,
-  );
-
-  if (!response.ok) {
-    throw new Error(`Supabase 조회 실패: HTTP ${response.status}`);
-  }
-
-  const rows = await response.json();
-  if (!Array.isArray(rows)) {
-    throw new Error("Supabase 응답 형식이 올바르지 않습니다.");
-  }
-
-  return {
-    rows,
-    contentRange: response.headers?.get?.("content-range") ?? "",
-  };
-}
-
-function readTotalCount(contentRange) {
-  const match = contentRange.match(/\/(\d+)$/);
-  return match ? Number(match[1]) : null;
-}
-
-function assertTradeDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error("Supabase 최신 기준일이 올바르지 않습니다.");
-  }
-}
-
-export async function fetchLatestDailyQuotes({
+// 서버 페이지에서 사용하는 읽기 전용 PostgREST 조회. 쓰기 요청은 제공하지 않는다.
+export async function readLatestDailyPrices({
   fetchImpl = fetch,
-  supabaseUrl = requireEnvironmentValue(SUPABASE_URL_ENV),
-  publishableKey = requireEnvironmentValue(SUPABASE_PUBLISHABLE_KEY_ENV),
-  timeoutMs = DEFAULT_TIMEOUT_MS,
+  supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL,
+  publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 } = {}) {
-  const latestDateUrl = getSupabaseRestUrl(supabaseUrl, {
-    select: "trade_date",
-    order: "trade_date.desc",
-    limit: 1,
-  });
-  const latestDateResult = await readRows(
-    fetchImpl,
-    latestDateUrl,
-    publishableKey,
-    timeoutMs,
-  );
-  const tradeDate = latestDateResult.rows[0]?.trade_date;
-
-  if (!tradeDate) {
-    throw new Error("Supabase에 일별 시세 데이터가 없습니다.");
-  }
-  assertTradeDate(tradeDate);
-
-  const rows = [];
-  let offset = 0;
-  let totalCount = null;
-
-  while (totalCount === null || rows.length < totalCount) {
-    const pageUrl = getSupabaseRestUrl(supabaseUrl, {
-      select:
-        "trade_date,stock_code,stock_name,close_price,change_rate,trading_value",
-      trade_date: `eq.${tradeDate}`,
-      order: "stock_code.asc",
-      limit: PAGE_SIZE,
-      offset,
+  if (!supabaseUrl?.trim() || !publishableKey?.trim()) throw new Error('Supabase 설정 누락');
+  async function read(params, count = false) {
+    const url = new URL('/rest/v1/daily_prices', supabaseUrl.trim());
+    url.search = new URLSearchParams(params);
+    const response = await fetchImpl(url, {
+      method: 'GET',
+      headers: { apikey: publishableKey.trim(), Accept: 'application/json', ...(count ? { Prefer: 'count=exact' } : {}) },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15000),
     });
-    const page = await readRows(
-      fetchImpl,
-      pageUrl,
-      publishableKey,
-      timeoutMs,
-      { Prefer: "count=exact" },
-    );
-
-    if (totalCount === null) {
-      totalCount = readTotalCount(page.contentRange);
-    }
-    rows.push(...page.rows);
-
-    if (page.rows.length === 0) break;
-    if (totalCount === null && page.rows.length < PAGE_SIZE) break;
-    offset += page.rows.length;
+    if (!response.ok) throw new Error('Supabase 조회 실패');
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error('Supabase 응답 오류');
+    return { rows, range: response.headers.get('content-range') };
   }
-
-  if (rows.length === 0) {
-    throw new Error("Supabase 최신 기준일의 시세 데이터가 없습니다.");
+  const latest = await read({ select: 'trade_date', order: 'trade_date.desc', limit: '1' });
+  const date = latest.rows[0]?.trade_date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('최신 기준일 누락');
+  const rows = [];
+  let total;
+  for (let page = 0; page < 100; page++) {
+    const result = await read({
+      select: 'trade_date,stock_code,stock_name,close_price,change_percent,trading_value',
+      trade_date: `eq.${date}`, order: 'stock_code.asc', limit: '1000', offset: String(rows.length),
+    }, true);
+    const match = result.range?.match(/\/(\d+)$/);
+    if (!match) throw new Error('전체 시세 건수 누락');
+    const count = Number(match[1]);
+    if (total !== undefined && total !== count) throw new Error('조회 중 시세 건수 변경');
+    total = count;
+    rows.push(...result.rows);
+    if (!result.rows.length || rows.length >= total) break;
   }
-
-  return { tradeDate, rows };
+  if (!rows.length || rows.length !== total) throw new Error('시세 목록 불완전');
+  if (rows.some(row => row.trade_date !== date)) throw new Error('시세 기준일 불일치');
+  return { date, rows };
 }

@@ -1,52 +1,9 @@
 {
-  "description": "인증키 노출을 차단하고 표시·계산 로직 변경 시 npm test 실행 여부를 확인합니다.",
+  "description": "인증 키를 보호하고 표시·계산 로직 변경 시 테스트 실행을 확인한다.",
   "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "project_dir=\"$PWD\"; while [ \"$project_dir\" != \"/\" ] && [ ! -f \"$project_dir/.codex/hooks/protect-auth-keys.cjs\" ]; do project_dir=\"$(dirname \"$project_dir\")\"; done; node \"$project_dir/.codex/hooks/protect-auth-keys.cjs\"",
-            "timeout": 10,
-            "statusMessage": "인증키 노출 확인 중"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "project_dir=\"$PWD\"; while [ \"$project_dir\" != \"/\" ] && [ ! -f \"$project_dir/.codex/hooks/verify-tests-before-stop.cjs\" ]; do project_dir=\"$(dirname \"$project_dir\")\"; done; node \"$project_dir/.codex/hooks/verify-tests-before-stop.cjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "^Bash$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "project_dir=\"$PWD\"; while [ \"$project_dir\" != \"/\" ] && [ ! -f \"$project_dir/.codex/hooks/verify-tests-before-stop.cjs\" ]; do project_dir=\"$(dirname \"$project_dir\")\"; done; node \"$project_dir/.codex/hooks/verify-tests-before-stop.cjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "project_dir=\"$PWD\"; while [ \"$project_dir\" != \"/\" ] && [ ! -f \"$project_dir/.codex/hooks/verify-tests-before-stop.cjs\" ]; do project_dir=\"$(dirname \"$project_dir\")\"; done; node \"$project_dir/.codex/hooks/verify-tests-before-stop.cjs\"",
-            "timeout": 30,
-            "statusMessage": "테스트 실행 기록 확인 중"
-          }
-        ]
-      }
-    ]
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/check-tests.py\"", "timeout": 10 }] }],
+    "PreToolUse": [{ "hooks": [{ "type": "command", "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/protect-secrets.py\"", "timeout": 10, "statusMessage": "인증 키 보호 검사" }, { "type": "command", "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/check-tests.py\"", "timeout": 10 }] }],
+    "PostToolUse": [{ "matcher": "^Bash$", "hooks": [{ "type": "command", "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/check-tests.py\"", "timeout": 10 }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/check-tests.py\"", "timeout": 10, "statusMessage": "표시·계산 로직의 테스트 실행 확인" }] }]
   }
 }

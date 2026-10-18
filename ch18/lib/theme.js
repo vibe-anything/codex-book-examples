@@ -1,31 +1,19 @@
 export const THEME_STORAGE_KEY = "market-dashboard-theme";
 
-export const THEMES = ["light", "dark"];
-
-export function isTheme(value) {
-  return THEMES.includes(value);
+export function normalizeTheme(value) {
+  return value === "light" || value === "dark" ? value : "system";
 }
 
-export function resolveTheme(storedTheme, prefersDark = false) {
-  if (isTheme(storedTheme)) return storedTheme;
-  return prefersDark ? "dark" : "light";
+export function resolveTheme(preference, systemDark) {
+  const normalized = normalizeTheme(preference);
+  return normalized === "system" ? (systemDark ? "dark" : "light") : normalized;
 }
 
-export const themeInitializationScript = `(() => {
-  const storageKey = ${JSON.stringify(THEME_STORAGE_KEY)};
-  let storedTheme = null;
-
-  try {
-    storedTheme = window.localStorage.getItem(storageKey);
-  } catch {
-    // 저장소가 차단된 경우에도 시스템 화면 설정을 따른다.
-  }
-
-  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  const theme = storedTheme === "light" || storedTheme === "dark"
-    ? storedTheme
-    : prefersDark ? "dark" : "light";
-
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
+// Runs before the first paint; storage may be unavailable in private browsing.
+export const themeInitScript = `(() => {
+  let preference = "system";
+  try { preference = localStorage.getItem("${THEME_STORAGE_KEY}"); } catch {}
+  const explicit = preference === "light" || preference === "dark";
+  const dark = explicit ? preference === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
 })();`;

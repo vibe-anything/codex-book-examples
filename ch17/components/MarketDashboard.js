@@ -1,46 +1,30 @@
+import Link from "next/link";
 import { IndexCard } from "./IndexCard";
 import { MarketHeat } from "./MarketHeat";
 import { RankingTable } from "./RankingTable";
 import { SectorHeatmap } from "./SectorHeatmap";
 import { Watchlist } from "./Watchlist";
-import { CompareEntryLink } from "./CompareEntryLink";
 
 export function MarketDashboard({ snapshot }) {
-  const sourceLabel = {
-    supabase: "Supabase",
-    "supabase+public-api": "Supabase + 공공데이터",
-    "supabase+example": "Supabase + 예시 데이터",
-    "public-api": "공공데이터",
-    example: "예시 데이터",
-  }[snapshot.source] ?? (snapshot.isMock ? "예시 데이터" : "공공데이터");
-
   return (
     <main className="dashboard-shell">
       <header className="dashboard-header">
         <div>
-          <p className="date-label">최근 공개된 국내 시장</p>
+          <p className="date-label">오늘의 국내 시장</p>
           <h1>시장 한눈에 보기</h1>
         </div>
         <div className="data-status">
-          <span
-            className={
-              snapshot.isMock || snapshot.hasExampleData
-                ? "mock-badge"
-                : "source-badge"
-            }
-          >
-            {sourceLabel}
-          </span>
-          <div className="data-status-copy">
-            <time>{snapshot.asOf} 기준</time>
-            <p>{snapshot.dataNotice}</p>
-          </div>
+          {(snapshot.isMock || snapshot.marketIsMock) && <span className="mock-badge">{snapshot.marketIsMock ? "시장 요약: 예시 데이터" : "예시 데이터"}</span>}
+          <time>{snapshot.asOf} 기준</time>
+          {snapshot.marketAsOf && snapshot.marketAsOf !== snapshot.asOf && <span>지수·시장 열기·업종: {snapshot.marketAsOf} 기준</span>}
         </div>
       </header>
 
-      <CompareEntryLink />
+      <p><Link href="/compare">종목 비교 →</Link></p>
 
-      <Watchlist stocks={snapshot.stocks} />
+      <Watchlist stocks={snapshot.stocks || Object.values(snapshot.rankings).flat().map(stock => ({
+        ...stock, code: `mock:${stock.name}`,
+      }))} />
 
       <section className="market-summary" aria-label="시장 지수와 시장 열기">
         {snapshot.indices.map((index) => <IndexCard index={index} key={index.code} />)}
@@ -51,7 +35,7 @@ export function MarketDashboard({ snapshot }) {
 
       <section className="rankings" aria-labelledby="ranking-title">
         <div className="section-heading ranking-heading">
-          <h2 id="ranking-title">최근 거래일 주요 종목</h2>
+          <h2 id="ranking-title">오늘의 주요 종목</h2>
         </div>
         <div className="ranking-grid">
           <RankingTable title="상승률 상위" badge="up" rows={snapshot.rankings.gainers} />
@@ -60,15 +44,11 @@ export function MarketDashboard({ snapshot }) {
         </div>
       </section>
 
-      <footer>
-        {snapshot.source === "supabase+public-api"
-          ? "종목은 Supabase 최신 종가, 시장 지표는 금융위원회 공공데이터 기준이며 실시간 투자 정보가 아닙니다."
-          : snapshot.source === "supabase+example"
-            ? "종목은 Supabase 실제 시세이며, 시장 지표는 공공데이터 조회 실패에 대비한 예시입니다."
-          : snapshot.isMock
-            ? "현재 수치는 조회 실패에 대비한 예시이며 실제 투자 정보가 아닙니다."
-            : "금융위원회 공공데이터를 사용하며, 기준 거래일 다음 영업일 오후 1시 이후 갱신될 수 있습니다."}
-      </footer>
+      <footer>{snapshot.isMock
+        ? "본 화면의 수치는 시세를 불러오지 못해 표시한 예시이며 실제 투자 정보가 아닙니다."
+        : snapshot.source === "supabase"
+          ? `종목 출처: Supabase daily_prices. ${snapshot.marketIsMock ? "지수·시장 열기·업종은 API 조회 실패로 예시 데이터를 표시합니다." : "지수·시장 열기·업종 출처: 공공데이터포털 · 금융위원회 / 한국거래소."} 일별 종가 기준이며 실시간 시세가 아닙니다. 지수 그래프는 최근 일별 종가입니다.`
+          : "출처: 공공데이터포털 · 금융위원회 / 한국거래소. 일별 종가 기준이며 실시간 시세가 아닙니다. 지수 그래프는 최근 일별 종가입니다."}</footer>
     </main>
   );
 }

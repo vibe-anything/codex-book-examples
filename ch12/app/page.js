@@ -1,9 +1,10 @@
 import { MarketDashboard } from "@/components/MarketDashboard";
-import { getMarketSnapshot } from "@/lib/marketData";
+import { loadMarketSnapshot } from "@/lib/marketData";
+import { requestDataGoKr } from "@/lib/dataGoKr";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const snapshot = await getMarketSnapshot();
+  const snapshot = await loadMarketSnapshot(requestDataGoKr);
   return <MarketDashboard snapshot={snapshot} />;
 }
