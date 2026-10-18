@@ -39,8 +39,15 @@ describe('fetchTransactions', () => {
     numOfRows: 10
   };
 
-  it('returns a distinct status when the server API key is missing', async () => {
+  it('shows practice rows even when the server API key is missing', async () => {
     const result = await fetchTransactions(query, {});
+
+    assert.equal(result.status, 'SUCCESS');
+    assert.equal(result.items.length, 2);
+  });
+
+  it('returns a distinct status when the key-missing state is switched on', async () => {
+    const result = await fetchTransactions(query, { MOCK_API_KEY_MISSING: 'true' });
 
     assert.equal(result.status, 'API_KEY_MISSING');
     assert.deepEqual(result.items, []);

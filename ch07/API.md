@@ -67,7 +67,7 @@ GET /api/transactions?regionCode=11680&dealYmd=202401&pageNo=1&numOfRows=10
 | --- | --- | --- |
 | `SUCCESS` | `200` | 조회에 성공했고 거래 내역이 있음 |
 | `EMPTY` | `200` | 조회에는 성공했지만 조건에 맞는 거래가 없음 |
-| `API_KEY_MISSING` | `200` | 서버에 `PUBLIC_DATA_SERVICE_KEY`가 설정되지 않음 |
+| `API_KEY_MISSING` | `200` | 서버에 `PUBLIC_DATA_SERVICE_KEY`가 설정되지 않음(현재 샘플 구현은 `MOCK_API_KEY_MISSING`으로 재현) |
 | `API_REQUEST_FAILED` | `200` | 외부 API 요청 또는 서버의 조회 작업에 실패함 |
 | `INVALID_INPUT` | `400` | 요청 파라미터 검증에 실패함 |
 
@@ -125,10 +125,11 @@ PUBLIC_DATA_SERVICE_KEY=발급받은_인증키
 
 인증키를 소스 코드, 클라이언트 컴포넌트, 브라우저 로그에 기록하거나 저장소에 커밋하면 안 된다.
 
-현재 샘플 구현에서는 다음 환경변수로 예외 상태를 재현할 수 있다.
+현재 샘플 구현은 실제 공공데이터 API를 호출하지 않으므로 인증키가 없어도 연습용 데이터를 반환한다. 다음 환경변수로 예외 상태를 재현할 수 있다.
 
 | 환경변수 | 값 | 결과 |
 | --- | --- | --- |
+| `MOCK_API_KEY_MISSING` | `true` | `API_KEY_MISSING` 응답 반환 |
 | `MOCK_EMPTY` | `true` | `EMPTY` 응답 반환 |
 | `MOCK_API_FAILURE` | `true` | `API_REQUEST_FAILED` 응답 반환 |
 
